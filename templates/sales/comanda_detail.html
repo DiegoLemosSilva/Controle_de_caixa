@@ -31,9 +31,16 @@
 
 <p class="text-muted">Cliente: {{ comanda.customer.name|default:"-" }}</p>
 
+{% if comanda.status == 'open' %}
+<div class="comanda-quick-actions d-md-none">
+    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addItemModal">Adicionar item</button>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#registerPaymentModal" {% if comanda.balance <= 0 %}disabled{% endif %}>Registrar pagamento</button>
+</div>
+{% endif %}
+
 <h2 class="h5">Itens</h2>
 <div class="table-responsive">
-    <table class="table table-striped align-middle">
+    <table class="table table-striped align-middle comanda-mobile-table">
         <thead>
             <tr>
                 <th>Descrição</th>
@@ -46,10 +53,10 @@
         <tbody>
             {% for item in comanda.items.all %}
             <tr>
-                <td>{{ item.description }}</td>
-                <td>{{ item.quantity }}</td>
-                <td>R$ {{ item.unit_price|floatformat:2 }}</td>
-                <td>R$ {{ item.subtotal|floatformat:2 }}</td>
+                <td data-label="Descrição">{{ item.description }}</td>
+                <td data-label="Quantidade">{{ item.quantity }}</td>
+                <td data-label="Valor unitário">R$ {{ item.unit_price|floatformat:2 }}</td>
+                <td data-label="Subtotal">R$ {{ item.subtotal|floatformat:2 }}</td>
                 {% if comanda.status == 'open' %}
                 <td class="text-end">
                     <button
@@ -117,7 +124,7 @@
 
 {% if comanda.payments.all %}
 <div class="table-responsive mb-3">
-    <table class="table table-sm align-middle mb-0">
+    <table class="table table-sm align-middle mb-0 comanda-mobile-table">
         <thead>
             <tr>
                 <th class="ps-3">Hora</th>
@@ -130,10 +137,10 @@
         <tbody>
             {% for payment in comanda.payments.all %}
             <tr>
-                <td class="ps-3">{{ payment.paid_at|date:"H:i" }}</td>
-                <td>{{ payment.get_method_display }}</td>
-                <td>{{ payment.customer.name|default:"-" }}</td>
-                <td class="text-end">R$ {{ payment.amount|floatformat:2 }}</td>
+                <td data-label="Hora" class="ps-3">{{ payment.paid_at|date:"H:i" }}</td>
+                <td data-label="Forma">{{ payment.get_method_display }}</td>
+                <td data-label="Cliente">{{ payment.customer.name|default:"-" }}</td>
+                <td data-label="Valor" class="text-end">R$ {{ payment.amount|floatformat:2 }}</td>
                 <td class="pe-3 text-end">
                     <button
                         type="button" class="btn btn-sm btn-outline-secondary js-edit-payment-btn"

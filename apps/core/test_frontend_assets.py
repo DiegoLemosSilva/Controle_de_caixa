@@ -56,5 +56,5 @@ class FrontendAssetsTests(SimpleTestCase):
                 html = render_to_string("base.html", {"user": SimpleNamespace(is_authenticated=authenticated)})
                 self.assertEqual("/static/js/pwa-register.js" in html, authenticated)
                 if authenticated:
-                    self.assertIn('data-service-worker-url="/static/pwa/service-worker.js"', html)
+                    self.assertIn('data-service-worker-url="/service-worker.js"', html)
         self.assertIsNotNone(finders.find("js/pwa-register.js"))

@@ -4,7 +4,10 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
+from apps.core.views import service_worker
+
 urlpatterns = [
+    path('service-worker.js', service_worker, name='service_worker'),
     path('admin/', admin.site.urls),
 
     path(

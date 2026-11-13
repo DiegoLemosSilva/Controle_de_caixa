@@ -10,9 +10,12 @@
         <form method="post" novalidate data-credit-warning="sale-credit-warning" data-customer="id_customer" data-amount="id_fiado_amount">
             {% csrf_token %}
             {{ credit_warnings|json_script:"credit-warning-data" }}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
             {% if products %}
             <div class="mb-3">
-                <label class="form-label">Produto cadastrado (opcional)</label>
+                <label class="form-label" for="sale-product-search">Produto cadastrado (opcional)</label>
                 <input
                     type="text" id="sale-product-search" class="form-control"
                     autocomplete="off"
@@ -22,16 +25,19 @@
             </div>
             {% endif %}
             <div class="mb-3">
-                <label class="form-label">Descrição (opcional)</label>
+                <label class="form-label" for="{{ form.description.id_for_label }}">Descrição (opcional)</label>
                 {{ form.description }}
+                {% for error in form.description.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
             </div>
             <div class="mb-3">
-                <label class="form-label">Data e hora da venda</label>
+                <label class="form-label" for="{{ form.sold_at.id_for_label }}">Data e hora da venda</label>
                 {{ form.sold_at }}
+                {% for error in form.sold_at.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
             </div>
             <div class="mb-3">
-                <label class="form-label">Cliente</label>
+                <label class="form-label" for="{{ form.customer.id_for_label }}">Cliente (obrigatório para fiado)</label>
                 {{ form.customer }}
+                {% for error in form.customer.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
             </div>
 
             <hr>
@@ -42,7 +48,11 @@
             </div>
 
             <button type="submit" class="btn btn-primary mt-3">Registrar venda</button>
+            {% if is_operator %}
+            <a href="{% url 'cash:dashboard' %}" class="btn btn-link">Cancelar</a>
+            {% else %}
             <a href="{% url 'sales:sale_list' %}" class="btn btn-link">Cancelar</a>
+            {% endif %}
         </form>
     </div>
 </div>

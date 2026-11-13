@@ -49,9 +49,7 @@
             <span class="payable-stat-label mb-0">Pago no mês</span>
             <span class="fw-bold">{{ percent_paid|floatformat:0 }}%</span>
         </div>
-        <div class="payable-progress-track">
-            <div class="payable-progress-bar" style="width: {{ percent_paid|floatformat:0 }}%;"></div>
-        </div>
+        <progress class="payable-progress-track" value="{{ percent_paid|floatformat:'0u' }}" max="100" aria-label="Percentual pago no mês">{{ percent_paid|floatformat:0 }}%</progress>
     </div>
 </div>
 

@@ -67,6 +67,8 @@ class SaleForm(forms.Form):
 
     def __init__(self, *args, business=None, **kwargs):
         super().__init__(*args, **kwargs)
+        for name in ('amount_cash', 'amount_pix', 'amount_debit', 'amount_credit', 'amount_other', 'fiado_amount'):
+            self.fields[name].widget.attrs['inputmode'] = 'decimal'
         self.fields['sold_at'].initial = timezone.localtime(timezone.now()).strftime(
             '%Y-%m-%dT%H:%M'
         )
@@ -126,8 +128,8 @@ class ComandaItemForm(forms.ModelForm):
         fields = ['description', 'quantity', 'unit_price']
         widgets = {
             'description': forms.TextInput(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
-            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'inputmode': 'decimal'}),
+            'unit_price': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'inputmode': 'decimal'}),
         }
 
 
@@ -145,7 +147,7 @@ class ComandaPaymentForm(forms.Form):
     )
     amount = forms.DecimalField(
         min_value=Decimal('0.01'), max_digits=12, decimal_places=2,
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'inputmode': 'decimal'}),
         label='Valor',
     )
     customer = forms.ModelChoiceField(

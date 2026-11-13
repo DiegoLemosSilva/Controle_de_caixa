@@ -5,3 +5,37 @@
 .cash-comanda-search {
     min-width: 240px;
 }
+
+@media (max-width: 767.98px) {
+    .cash-date-nav {
+        gap: .35rem;
+    }
+
+    .cash-date-nav > div {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cash-date-nav .badge {
+        display: inline-block;
+        margin: .2rem 0 0 !important;
+    }
+
+    .cash-primary-actions {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .cash-primary-actions a {
+        flex: 1 1 45%;
+    }
+
+    .cash-search-form {
+        width: 100%;
+    }
+
+    .cash-comanda-search {
+        min-width: 0;
+        width: 100%;
+    }
+}

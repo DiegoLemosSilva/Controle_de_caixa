@@ -1,29 +1,35 @@
-<div class="row">
+<div class="row g-3">
     <div class="col-6 col-md-4">
-        <label class="form-label">Dinheiro</label>
+        <label class="form-label" for="{{ form.amount_cash.id_for_label }}">Dinheiro</label>
         {{ form.amount_cash }}
+        {% for error in form.amount_cash.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
     </div>
     <div class="col-6 col-md-4">
-        <label class="form-label">Pix</label>
+        <label class="form-label" for="{{ form.amount_pix.id_for_label }}">Pix</label>
         {{ form.amount_pix }}
+        {% for error in form.amount_pix.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
     </div>
     <div class="col-6 col-md-4">
-        <label class="form-label">Cartão de débito</label>
+        <label class="form-label" for="{{ form.amount_debit.id_for_label }}">Cartão de débito</label>
         {{ form.amount_debit }}
+        {% for error in form.amount_debit.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
     </div>
     <div class="col-6 col-md-4">
-        <label class="form-label">Cartão de crédito</label>
+        <label class="form-label" for="{{ form.amount_credit.id_for_label }}">Cartão de crédito</label>
         {{ form.amount_credit }}
+        {% for error in form.amount_credit.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
     </div>
     <div class="col-6 col-md-4">
-        <label class="form-label">Outro</label>
+        <label class="form-label" for="{{ form.amount_other.id_for_label }}">Outro</label>
         {{ form.amount_other }}
+        {% for error in form.amount_other.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
     </div>
     <div class="col-6 col-md-4">
-        <label class="form-label">Fiado</label>
+        <label class="form-label" for="{{ form.fiado_amount.id_for_label }}">Fiado</label>
         {{ form.fiado_amount }}
+        {% for error in form.fiado_amount.errors %}<div class="text-danger" role="alert">{{ error }}</div>{% endfor %}
     </div>
 </div>
-<small class="text-muted d-block mt-1">
-    A soma de todos os valores acima deve ser igual ao valor total da venda.
+<small class="text-muted d-block mt-2">
+    O valor total da venda será a soma dos pagamentos e do fiado informados.
 </small>

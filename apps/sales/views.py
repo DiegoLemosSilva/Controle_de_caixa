@@ -12,6 +12,7 @@ from django.views import View
 from django.views.generic import DetailView, FormView, ListView
 
 from apps.businesses.mixins import BusinessRequiredMixin
+from apps.businesses.services import user_is_operator
 from apps.core.constants import PAYMENT_METHOD_CHOICES, PAYMENT_METHOD_FIADO
 from apps.customers.services import credit_balances, credit_warning_data, projected_credit
 from apps.products.models import Product
@@ -256,6 +257,11 @@ class SaleCreateView(BusinessRequiredMixin, FormView):
     form_class = SaleForm
     success_url = reverse_lazy('sales:sale_list')
     operator_allowed = True
+
+    def get_success_url(self):
+        if user_is_operator(self.request.user):
+            return str(reverse_lazy('cash:dashboard'))
+        return super().get_success_url()
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()

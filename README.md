@@ -220,10 +220,20 @@ de backups e teste a restauração periodicamente.
 
 ## PWA (aplicativo instalável)
 
-O sistema é instalável como PWA. O Service Worker (`static/pwa/service-worker.js`)
-armazena em cache **apenas arquivos estáticos públicos** — nunca páginas
-autenticadas ou dados financeiros — para evitar exposição de informações
-após logout ou expiração de sessão.
+O sistema pode ser instalado como PWA em navegadores compatíveis e exige
+HTTPS (ou localhost para desenvolvimento).
+
+- No Android, abra o sistema no Chrome e use o menu **Instalar aplicativo**
+  ou **Adicionar à tela inicial**, conforme a opção disponível no navegador.
+- No iPhone, abra o sistema no Safari, toque em **Compartilhar** e depois
+  em **Adicionar à Tela de Início**.
+
+O Service Worker é servido em `/service-worker.js` e armazena em cache apenas
+uma página pública de aviso de indisponibilidade; páginas autenticadas e dados
+financeiros não são armazenados por ele. Se a conexão falhar após o envio de
+uma operação, confira o histórico antes de tentar novamente, pois ela pode
+ter sido registrada no servidor mesmo sem confirmação na tela. Não há
+sincronização offline de transações.
 
 ## Estrutura do projeto
 
@@ -269,9 +279,8 @@ static/             CSS, JS e arquivos do PWA
 - Não há sincronização offline: todas as operações financeiras exigem conexão.
 - O MVP trabalha com um usuário por empresa (estrutura preparada para evoluir
   para múltiplos usuários por empresa no futuro).
-- Os ícones do PWA (`static/icons/icon-192.png`, `icon-512.png`) precisam ser
-  adicionados manualmente antes da instalação completa como aplicativo (o
-  sistema funciona normalmente sem eles, apenas sem ícone customizado).
+- A instalação do PWA depende do navegador e deve ser validada em dispositivos
+  Android e iOS; as opções e a experiência podem variar.
 - A integração com Gemini depende de uma chave de API externa e está sujeita
   aos termos de uso e disponibilidade do serviço do Google.
 - Por padrão, o caixa de qualquer data está **fechado**: é necessário

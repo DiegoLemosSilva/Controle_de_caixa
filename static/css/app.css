@@ -23,3 +23,119 @@ html, body {
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
+
+.mobile-nav {
+    display: none;
+}
+
+.mobile-menu a {
+    display: block;
+    padding: .8rem .3rem;
+    color: #24344d;
+    text-decoration: none;
+    border-bottom: 1px solid #e5eaf2;
+}
+
+@media (max-width: 767.98px) {
+    body:has(.mobile-nav) {
+        padding-bottom: calc(4.4rem + env(safe-area-inset-bottom));
+    }
+
+    .mobile-nav {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        position: fixed;
+        inset: auto 0 0;
+        z-index: 1030;
+        padding-bottom: env(safe-area-inset-bottom);
+        background: #fff;
+        border-top: 1px solid #dce3ed;
+        box-shadow: 0 -2px 12px rgba(24, 39, 65, .08);
+    }
+
+    .mobile-nav__item {
+        min-height: 4.4rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .1rem;
+        border: 0;
+        background: transparent;
+        color: #23446e;
+        font-size: .75rem;
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .mobile-nav__item span {
+        font-size: 1.4rem;
+        line-height: 1;
+    }
+
+    .mobile-nav__item:focus-visible, .mobile-menu a:focus-visible {
+        outline: 3px solid #0d6efd;
+        outline-offset: -3px;
+    }
+
+    .form-control, .form-select {
+        min-height: 44px;
+        font-size: 1rem;
+    }
+
+    .btn {
+        min-height: 44px;
+    }
+
+    .comanda-quick-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .5rem;
+        margin-bottom: 1.25rem;
+    }
+
+    .comanda-quick-actions .btn {
+        flex: 1 1 45%;
+    }
+
+    .comanda-mobile-table,
+    .comanda-mobile-table tbody,
+    .comanda-mobile-table tbody tr,
+    .comanda-mobile-table tbody td {
+        display: block;
+        width: 100%;
+    }
+
+    .comanda-mobile-table thead {
+        display: none;
+    }
+
+    .comanda-mobile-table tbody tr {
+        border: 1px solid #dce3ed;
+        border-radius: .75rem;
+        padding: .75rem;
+        margin-bottom: .75rem;
+        background: #fff;
+    }
+
+    .comanda-mobile-table tbody td {
+        border: 0;
+        padding: .25rem 0 !important;
+        text-align: left !important;
+        overflow-wrap: anywhere;
+    }
+
+    .comanda-mobile-table td[data-label]::before {
+        content: attr(data-label) ": ";
+        color: #52657d;
+        font-weight: 600;
+    }
+
+    .comanda-mobile-table tfoot th {
+        white-space: normal;
+    }
+
+    .modal-dialog {
+        margin: .5rem;
+    }
+}

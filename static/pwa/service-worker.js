@@ -1,50 +1,30 @@
-/**
- * Service Worker do Controle de Caixa.
- *
- * Por decisão de projeto (AGENTS.md seção 15), este Service Worker NÃO
- * armazena em cache páginas autenticadas nem respostas financeiras.
- * Apenas arquivos estáticos públicos (CSS, JS, ícones) são cacheados,
- * para permitir instalação como PWA sem risco de expor dados privados
- * após logout ou expiração de sessão.
- */
-
-const CACHE_NAME = 'controle-caixa-static-v1';
-
-const STATIC_ASSETS = [
-    '/static/css/app.css',
-];
+/* O cache contém somente uma página pública; dados financeiros exigem rede. */
+const CACHE_NAME = 'controle-caixa-pwa-v2';
+const OFFLINE_URL = '/static/pwa/offline.html';
 
 self.addEventListener('install', (event) => {
-    event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
-    );
+    event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_URL)));
 });
 
 self.addEventListener('activate', (event) => {
     event.waitUntil(
-        caches.keys().then((keys) =>
-            Promise.all(
-                keys
-                    .filter((key) => key !== CACHE_NAME)
-                    .map((key) => caches.delete(key))
-            )
-        )
+        caches.keys().then((keys) => Promise.all(
+            keys.filter((key) => (
+                key === 'controle-caixa-static-v1' ||
+                (key.startsWith('controle-caixa-pwa-') && key !== CACHE_NAME)
+            )).map((key) => caches.delete(key))
+        )).then(() => self.clients.claim())
     );
 });
 
 self.addEventListener('fetch', (event) => {
-    const url = new URL(event.request.url);
+    const request = event.request;
+    const url = new URL(request.url);
 
-    // Só intercepta requisições de arquivos estáticos públicos.
-    const isStaticAsset = url.pathname.startsWith('/static/');
+    // Nunca interceptar gravações, respostas privadas não navegáveis ou outras origens.
+    if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-    if (!isStaticAsset || event.request.method !== 'GET') {
-        return;
+    if (request.mode === 'navigate') {
+        event.respondWith(fetch(request).catch(() => caches.match(OFFLINE_URL)));
     }
-
-    event.respondWith(
-        caches.match(event.request).then((cached) => {
-            return cached || fetch(event.request);
-        })
-    );
 });
