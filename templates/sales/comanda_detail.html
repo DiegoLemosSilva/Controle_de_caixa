@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+{% load l10n static %}
+
+{% block title %}Comanda - Controle de Caixa{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+    <h1 class="h3 mb-0">
+        Comanda {{ comanda.identifier|default:comanda.pk }}
+        {% if comanda.status == 'open' %}
+            <span class="badge bg-warning text-dark">Aberta</span>
+        {% elif comanda.status == 'finalized' %}
+            <span class="badge bg-success">Finalizada</span>
+        {% else %}
+            <span class="badge bg-secondary">Cancelada</span>
+        {% endif %}
+    </h1>
+    {% if comanda.status == 'open' and not comanda.items.exists %}
+    <form
+        method="post"
+        data-confirm="Excluir esta comanda? Ela foi aberta sem nenhum item lançado."
+    >
+        {% csrf_token %}
+        <input type="hidden" name="delete_comanda" value="1">
+        <button type="submit" class="btn btn-outline-danger btn-sm">
+            Excluir comanda
+        </button>
+    </form>
+    {% endif %}
+</div>
+
+<p class="text-muted">Cliente: {{ comanda.customer.name|default:"-" }}</p>
+
+<h2 class="h5">Itens</h2>
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Descrição</th>
+                <th>Quantidade</th>
+                <th>Valor unitário</th>
+                <th>Subtotal</th>
+                {% if comanda.status == 'open' %}<th class="text-end">&nbsp;</th>{% endif %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in comanda.items.all %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>R$ {{ item.unit_price|floatformat:2 }}</td>
+                <td>R$ {{ item.subtotal|floatformat:2 }}</td>
+                {% if comanda.status == 'open' %}
+                <td class="text-end">
+                    <button
+                        type="button" class="btn btn-sm btn-outline-secondary js-edit-item-btn"
+                        data-bs-toggle="modal" data-bs-target="#editItemModal"
+                        data-item-id="{{ item.pk }}"
+                        data-description="{{ item.description }}"
+                        data-quantity="{{ item.quantity|unlocalize }}"
+                        data-unit-price="{{ item.unit_price|unlocalize }}"
+                    >
+                        Editar
+                    </button>
+                    <form
+                        method="post" class="d-inline"
+                        data-confirm="Remover este item da comanda?"
+                    >
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_item" value="1">
+                        <input type="hidden" name="item_id" value="{{ item.pk }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                    </form>
+                </td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" class="text-center text-muted">Nenhum item lançado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="3" class="text-end">Total acumulado</th>
+                <th>R$ {{ comanda.total_amount|floatformat:2 }}</th>
+                {% if comanda.status == 'open' %}<th></th>{% endif %}
+            </tr>
+        </tfoot>
+    </table>
+</div>
+
+{% if comanda.status == 'open' %}
+<h2 class="h5 mt-4">Pagamentos</h2>
+<div class="row g-2 mb-3">
+    <div class="col-6 col-md-4">
+        <div class="border rounded p-2 text-center h-100">
+            <div class="small text-muted">Total da comanda</div>
+            <div class="fw-bold">R$ {{ comanda.total_amount|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="border border-success-subtle bg-success-subtle rounded p-2 text-center h-100">
+            <div class="small text-muted">Já pago</div>
+            <div class="fw-bold text-success-emphasis">R$ {{ comanda.paid_amount|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="border {% if comanda.balance > 0 %}border-warning-subtle bg-warning-subtle{% else %}border-success-subtle bg-success-subtle{% endif %} rounded p-2 text-center h-100">
+            <div class="small text-muted">Saldo restante</div>
+            <div class="fw-bold {% if comanda.balance > 0 %}text-warning-emphasis{% else %}text-success-emphasis{% endif %}">
+                R$ {{ comanda.balance|floatformat:2 }}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if comanda.payments.all %}
+<div class="table-responsive mb-3">
+    <table class="table table-sm align-middle mb-0">
+        <thead>
+            <tr>
+                <th class="ps-3">Hora</th>
+                <th>Forma</th>
+                <th>Cliente</th>
+                <th class="text-end">Valor</th>
+                <th class="pe-3 text-end">&nbsp;</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payment in comanda.payments.all %}
+            <tr>
+                <td class="ps-3">{{ payment.paid_at|date:"H:i" }}</td>
+                <td>{{ payment.get_method_display }}</td>
+                <td>{{ payment.customer.name|default:"-" }}</td>
+                <td class="text-end">R$ {{ payment.amount|floatformat:2 }}</td>
+                <td class="pe-3 text-end">
+                    <button
+                        type="button" class="btn btn-sm btn-outline-secondary js-edit-payment-btn"
+                        data-bs-toggle="modal" data-bs-target="#editPaymentModal"
+                        data-payment-id="{{ payment.pk }}"
+                        data-method="{{ payment.method }}"
+                        data-amount="{{ payment.amount|unlocalize }}"
+                        data-customer-id="{{ payment.customer_id|default:'' }}"
+                    >
+                        Editar
+                    </button>
+                    <form
+                        method="post" class="d-inline"
+                        data-confirm="Remover este pagamento?"
+                    >
+                        {% csrf_token %}
+                        <input type="hidden" name="delete_payment" value="1">
+                        <input type="hidden" name="payment_id" value="{{ payment.pk }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endif %}
+
+<!-- Modal de edição de item -->
+{% if comanda.status == 'open' %}
+<div class="modal fade" id="editItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="edit_item" value="1">
+                <input type="hidden" name="item_id" id="edit-item-id" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Descrição</label>
+                        <input type="text" name="description" id="edit-item-description" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Quantidade</label>
+                        <input type="number" step="0.01" min="0.01" name="quantity" id="edit-item-quantity" class="form-control" required>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Valor unitário</label>
+                        <input type="number" step="0.01" min="0.01" name="unit_price" id="edit-item-unit-price" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de edição de pagamento -->
+<div class="modal fade" id="editPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" id="edit-payment-form" data-credit-warning="edit-credit-warning" data-customer="edit-payment-customer" data-amount="edit-payment-amount" data-method="edit-payment-method">
+                {% csrf_token %}
+                <input type="hidden" name="edit_payment" value="1">
+                <input type="hidden" name="payment_id" id="edit-payment-id" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar pagamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">Forma de pagamento</label>
+                        <select name="method" id="edit-payment-method" class="form-select" required>
+                            {% for code, label in payment_form.fields.method.choices %}
+                            <option value="{{ code }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Valor</label>
+                        <input type="number" step="0.01" min="0.01" name="amount" id="edit-payment-amount" class="form-control" required>
+                    </div>
+                    <div class="mb-2" id="edit-payment-customer-field" hidden>
+                        <label class="form-label">Cliente (obrigatório se Fiado)</label>
+                        <select name="customer" id="edit-payment-customer" class="form-select">
+                            <option value="">---------</option>
+                            {% for customer in payment_form.fields.customer.queryset %}
+                            <option value="{{ customer.pk }}">{{ customer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="edit-credit-warning" class="alert alert-warning mt-2" role="status" hidden>
+                        O fiado previsto ultrapassa o limite do cliente. Você pode continuar o lançamento.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if comanda.status == 'open' %}
+<div class="row mt-4">
+    <div class="col-12 col-md-6">
+        <h2 class="h6">Itens da comanda</h2>
+        <p class="small text-muted">Adicione cada item lançado pelo cliente.</p>
+        <button
+            type="button" class="btn btn-outline-primary"
+            data-bs-toggle="modal" data-bs-target="#addItemModal"
+        >
+            Adicionar item
+        </button>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <h2 class="h6">Registrar pagamento</h2>
+        <p class="small text-muted">
+            Cada pessoa da mesa pode registrar sua parte com a forma de
+            pagamento que preferir. O saldo restante é abatido automaticamente.
+        </p>
+        <button
+            type="button" class="btn btn-outline-primary"
+            data-bs-toggle="modal" data-bs-target="#registerPaymentModal"
+            {% if comanda.balance <= 0 %}disabled{% endif %}
+        >
+            Registrar pagamento
+        </button>
+    </div>
+</div>
+
+<!-- Modal de adicionar item -->
+<div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="add_item" value="1">
+                <div class="modal-header">
+                    <h5 class="modal-title">Adicionar item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    {% if products %}
+                    <div class="mb-2">
+                        <label class="form-label">Produto cadastrado (opcional)</label>
+                        <input
+                            type="text" id="add-item-product-search" class="form-control"
+                            autocomplete="off"
+                            placeholder="Digite para buscar um produto..."
+                        >
+                        {{ products_json|json_script:"add-item-products-data" }}
+                    </div>
+                    {% endif %}
+                    <div class="mb-2">
+                        <label class="form-label">Descrição</label>
+                        {{ item_form.description }}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Quantidade</label>
+                        {{ item_form.quantity }}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Valor unitário</label>
+                        {{ item_form.unit_price }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Adicionar item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de registro de pagamento -->
+<div class="modal fade" id="registerPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" novalidate id="payment-form" data-credit-warning="payment-credit-warning" data-customer="id_customer" data-amount="id_amount" data-method="id_method">
+                {% csrf_token %}
+                <input type="hidden" name="register_payment" value="1">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar pagamento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <label class="form-label">{{ payment_form.method.label }}</label>
+                        {{ payment_form.method }}
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">{{ payment_form.amount.label }}</label>
+                        {{ payment_form.amount }}
+                    </div>
+                    <div class="mb-2" id="payment-customer-field" hidden>
+                        <label class="form-label">{{ payment_form.customer.label }}</label>
+                        {{ payment_form.customer }}
+                    </div>
+                    <div id="payment-credit-warning" class="alert alert-warning mt-2" role="status" hidden>
+                        O fiado previsto ultrapassa o limite do cliente. Você pode continuar o lançamento.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Registrar pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <h2 class="h6">Finalizar comanda</h2>
+    {% if comanda.balance > 0 %}
+    <p class="text-muted small">
+        Ainda faltam <strong>R$ {{ comanda.balance|floatformat:2 }}</strong>
+        para finalizar esta comanda. Registre os pagamentos restantes acima.
+    </p>
+    <button type="button" class="btn btn-success" disabled>Finalizar comanda</button>
+    {% else %}
+    <p class="text-muted small">
+        Todos os pagamentos já cobrem o total da comanda. Confirme para finalizar.
+    </p>
+    <form method="post" action="{% url 'sales:comanda_finalize' comanda.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Finalizar comanda</button>
+    </form>
+    {% endif %}
+</div>
+{% endif %}
+
+<a href="{% url 'cash:dashboard' %}" class="btn btn-link mt-3">Voltar para o Caixa</a>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ credit_warnings|json_script:"credit-warning-data" }}
+<script src="{% static 'js/product-search.js' %}"></script>
+<script src="{% static 'js/sales/comanda_detail.js' %}" defer></script>
+<script src="{% static 'js/credit-warning.js' %}" defer></script>
+{% endblock %}

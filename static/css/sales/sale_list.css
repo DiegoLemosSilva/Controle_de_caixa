@@ -1,0 +1,63 @@
+.sales-heading { color: #17243b; letter-spacing: -.03em; }
+.sales-subtitle { color: #596b80; }
+.sales-period {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; padding: .75rem; background: #f5f7fb;
+    border: 1px solid #e5eaf2; border-radius: 1rem;
+}
+.sales-period-label { color: #17243b; line-height: 1.25; }
+.sales-period-caption { color: #596b80; font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+.sales-period .btn { min-height: 40px; white-space: nowrap; }
+.sales-stat {
+    --stat-color: #175cd3; --stat-bg: #edf4ff;
+    height: 100%; padding: 1.4rem; background: #fff;
+    border: 1px solid #e2e8f0; border-radius: 1rem;
+    box-shadow: 0 6px 20px rgba(25, 42, 70, .06);
+    display: flex; flex-direction: column;
+}
+.sales-stat--received { --stat-color: #08744b; --stat-bg: #e9f8f0; }
+.sales-stat-header { display: flex; align-items: center; gap: .75rem; }
+.sales-stat-icon {
+    display: grid; place-items: center; flex: 0 0 2.5rem; height: 2.5rem;
+    color: var(--stat-color); background: var(--stat-bg); border-radius: .75rem;
+}
+.sales-stat-icon svg { width: 1.25rem; height: 1.25rem; }
+.sales-stat-label { color: #43566e; font-size: .9rem; font-weight: 600; }
+.sales-stat-value {
+    color: var(--stat-color); font-size: clamp(1.55rem, 2.2vw, 2rem);
+    font-weight: 700; letter-spacing: -.03em; margin: 1.15rem 0 .35rem;
+    overflow-wrap: anywhere;
+}
+.sales-stat-description { color: #596b80; font-size: .82rem; line-height: 1.45; margin: 0; }
+.sales-stat-breakdown {
+    border-top: 1px solid #e9edf3; margin: .9rem 0 .5rem; padding-top: .7rem;
+    color: #43566e; font-size: .85rem;
+}
+.sales-stat-breakdown-row {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    justify-content: space-between; gap: .25rem 1rem; padding: .2rem 0;
+}
+.sales-stat-breakdown-row dt { font-weight: 500; }
+.sales-stat-breakdown-row dd {
+    margin: 0; color: #175cd3; font-weight: 700; overflow-wrap: anywhere;
+}
+.sales-stat-breakdown-row--credit dd { color: #805200; }
+.sales-stat-breakdown-row--received dd { color: #08744b; }
+.sales-stat-note { color: #596b80; font-size: .78rem; line-height: 1.45; margin: .5rem 0 0; }
+.sales-stat-breakdown--compact {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: .15rem 1.25rem; background: #f8fafc;
+    border: 1px solid #edf1f6; border-radius: .65rem;
+    padding: .75rem .9rem; margin: 0; border-top: none;
+    font-size: .82rem;
+}
+.sales-stat-breakdown--compact .sales-stat-breakdown-row { padding: .25rem 0; }
+@media (max-width: 575.98px) {
+    .sales-stat-breakdown--compact { grid-template-columns: 1fr; }
+}
+@media (max-width: 575.98px) {
+    .sales-period { gap: .35rem; }
+    .sales-period .btn { font-size: .8rem; padding-inline: .55rem; }
+    .sales-period-label { font-size: .9rem; }
+    .sales-stat { padding: 1.1rem; }
+}

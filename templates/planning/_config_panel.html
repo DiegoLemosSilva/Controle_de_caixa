@@ -1,0 +1,49 @@
+<h3 class="h6">Aplicar valor-base por dia da semana</h3>
+<form method="post" action="{% url 'planning:apply_weekday_values' %}">
+    {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="indicator" value="{{ indicator }}">
+    <div class="row g-2">
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.monday.label }}</label>
+            {{ weekday_form.monday }}
+        </div>
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.tuesday.label }}</label>
+            {{ weekday_form.tuesday }}
+        </div>
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.wednesday.label }}</label>
+            {{ weekday_form.wednesday }}
+        </div>
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.thursday.label }}</label>
+            {{ weekday_form.thursday }}
+        </div>
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.friday.label }}</label>
+            {{ weekday_form.friday }}
+        </div>
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.saturday.label }}</label>
+            {{ weekday_form.saturday }}
+        </div>
+        <div class="col-6">
+            <label class="form-label small">{{ weekday_form.sunday.label }}</label>
+            {{ weekday_form.sunday }}
+        </div>
+    </div>
+    <button type="submit" class="btn btn-outline-primary btn-sm mt-2">Aplicar ao mês</button>
+</form>
+
+<hr>
+
+<h3 class="h6">Copiar mês anterior</h3>
+<form method="post" action="{% url 'planning:copy_previous_month' %}">
+    {% csrf_token %}
+    <input type="hidden" name="year" value="{{ year }}">
+    <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="indicator" value="{{ indicator }}">
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Copiar</button>
+</form>

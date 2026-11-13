@@ -1,0 +1,29 @@
+<div class="row">
+    <div class="col-6 col-md-4">
+        <label class="form-label">Dinheiro</label>
+        {{ form.amount_cash }}
+    </div>
+    <div class="col-6 col-md-4">
+        <label class="form-label">Pix</label>
+        {{ form.amount_pix }}
+    </div>
+    <div class="col-6 col-md-4">
+        <label class="form-label">Cartão de débito</label>
+        {{ form.amount_debit }}
+    </div>
+    <div class="col-6 col-md-4">
+        <label class="form-label">Cartão de crédito</label>
+        {{ form.amount_credit }}
+    </div>
+    <div class="col-6 col-md-4">
+        <label class="form-label">Outro</label>
+        {{ form.amount_other }}
+    </div>
+    <div class="col-6 col-md-4">
+        <label class="form-label">Fiado</label>
+        {{ form.fiado_amount }}
+    </div>
+</div>
+<small class="text-muted d-block mt-1">
+    A soma de todos os valores acima deve ser igual ao valor total da venda.
+</small>

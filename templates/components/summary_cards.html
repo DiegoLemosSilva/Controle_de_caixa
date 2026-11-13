@@ -1,0 +1,61 @@
+<h2 class="h5 mt-4">{{ title }}</h2>
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator border-success">
+            <div class="card-body">
+                <div class="text-muted small">Vendas</div>
+                <div class="fw-bold">R$ {{ summary.sales|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator border-primary">
+            <div class="card-body">
+                <div class="text-muted small">Recebimentos</div>
+                <div class="fw-bold">R$ {{ summary.receipts|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator border-danger">
+            <div class="card-body">
+                <div class="text-muted small">Despesas pagas</div>
+                <div class="fw-bold">R$ {{ summary.paid_expenses|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator border-warning">
+            <div class="card-body">
+                <div class="text-muted small">Fiado em aberto</div>
+                <div class="fw-bold">R$ {{ summary.pending_receivables|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator border-secondary">
+            <div class="card-body">
+                <div class="text-muted small">Contas a pagar</div>
+                <div class="fw-bold">R$ {{ summary.pending_payables|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator {% if summary.cash_adjustments < 0 %}border-danger{% elif summary.cash_adjustments > 0 %}border-success{% else %}border-light{% endif %}">
+            <div class="card-body">
+                <div class="text-muted small">Ajuste de caixa (sobra/falta)</div>
+                <div class="fw-bold {% if summary.cash_adjustments < 0 %}text-danger{% elif summary.cash_adjustments > 0 %}text-success{% endif %}">
+                    R$ {{ summary.cash_adjustments|floatformat:2 }}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+        <div class="card card-indicator border-info">
+            <div class="card-body">
+                <div class="text-muted small">Valor de abertura</div>
+                <div class="fw-bold">R$ {{ summary.opening_amount|floatformat:2 }}</div>
+            </div>
+        </div>
+    </div>
+</div>

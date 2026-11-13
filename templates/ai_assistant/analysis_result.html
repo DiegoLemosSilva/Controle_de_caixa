@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ template.name }} - Assistente IA - Controle de Caixa{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/ai_assistant/analysis.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-1">
+    <a href="{% url 'ai_assistant:analysis_list' %}" class="btn btn-sm btn-outline-secondary">
+        &larr; Voltar
+    </a>
+    <h1 class="h3 mb-0">{{ template.name }}</h1>
+</div>
+<p class="text-muted small mb-4">{{ template.description }}</p>
+
+{% if result %}
+<div class="card">
+    <div class="card-body">
+        <div class="analysis-content">{{ result|linebreaksbr }}</div>
+    </div>
+</div>
+
+<div class="alert alert-secondary mt-3">
+    Esta análise é gerada automaticamente pela IA a partir dos dados financeiros do sistema
+    e não substitui aconselhamento financeiro profissional.
+</div>
+
+<form method="post" action="{% url 'ai_assistant:run_analysis' template.analysis_type %}" class="mt-2">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-outline-primary btn-sm">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-1"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 12 11 12"/></svg>
+        Gerar novamente
+    </button>
+</form>
+{% else %}
+<div class="alert alert-warning">
+    Nenhum resultado disponível. Clique em "Gerar análise" a partir da lista.
+</div>
+{% endif %}
+{% endblock %}

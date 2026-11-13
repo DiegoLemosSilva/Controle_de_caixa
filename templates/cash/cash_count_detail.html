@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Conferir {{ payment_method_label }} - Controle de Caixa{% endblock %}
+
+{% block content %}
+<a href="{% url 'cash:cash_count' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-link mb-3 ps-0">
+    &laquo; Voltar à conferência
+</a>
+
+<h1 class="h3 mb-1">Conferir {{ payment_method_label }}</h1>
+<p class="text-muted">{{ selected_date|date:"d/m/Y" }}</p>
+
+{% if existing_adjustment %}
+<div class="alert alert-info">
+    Esta forma de pagamento já foi conferida
+    {% if existing_adjustment.difference == 0 %}
+        (sem divergência).
+    {% else %}
+        com {% if existing_adjustment.difference > 0 %}sobra{% else %}falta{% endif %}
+        de R$ {{ existing_adjustment.difference|floatformat:2|cut:"-" }}.
+    {% endif %}
+    Você pode registrar uma nova conferência abaixo para corrigir, se necessário.
+</div>
+{% endif %}
+
+<div class="card mb-4">
+    <div class="card-body text-center">
+        <div class="text-muted small">Valor esperado pelo sistema</div>
+        <div class="display-6 fw-bold text-primary" id="expected-amount" data-value="{{ expected_amount|floatformat:2 }}">
+            R$ {{ expected_amount|floatformat:2 }}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.date.as_hidden }}
+            {{ form.payment_method.as_hidden }}
+
+            <div class="mb-3">
+                <label class="form-label">{{ form.counted_amount.label }}</label>
+                {{ form.counted_amount }}
+                {% for error in form.counted_amount.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="mb-3" id="reason-field" hidden>
+                <label class="form-label">{{ form.reason.label }}</label>
+                {{ form.reason }}
+                <div class="form-text">{{ form.reason.help_text }}</div>
+                {% for error in form.reason.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+
+            <div class="alert alert-warning d-none" id="divergence-alert"></div>
+
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+                Confirmar (sem divergência)
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/cash/cash_count_detail.js' %}" defer></script>
+{% endblock %}

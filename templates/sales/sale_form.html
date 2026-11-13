@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Nova venda - Controle de Caixa{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">Nova venda</h1>
+<div class="row">
+    <div class="col-12 col-md-8">
+        <form method="post" novalidate data-credit-warning="sale-credit-warning" data-customer="id_customer" data-amount="id_fiado_amount">
+            {% csrf_token %}
+            {{ credit_warnings|json_script:"credit-warning-data" }}
+            {% if products %}
+            <div class="mb-3">
+                <label class="form-label">Produto cadastrado (opcional)</label>
+                <input
+                    type="text" id="sale-product-search" class="form-control"
+                    autocomplete="off"
+                    placeholder="Digite para buscar um produto..."
+                >
+                {{ products_json|json_script:"sale-products-data" }}
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label">Descrição (opcional)</label>
+                {{ form.description }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Data e hora da venda</label>
+                {{ form.sold_at }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Cliente</label>
+                {{ form.customer }}
+            </div>
+
+            <hr>
+            <h2 class="h6">Divisão entre formas de pagamento e fiado</h2>
+            {% include "components/sale_payment_fields.html" %}
+            <div id="sale-credit-warning" class="alert alert-warning mt-3" role="status" hidden>
+                O fiado previsto ultrapassa o limite do cliente. Você pode continuar o lançamento.
+            </div>
+
+            <button type="submit" class="btn btn-primary mt-3">Registrar venda</button>
+            <a href="{% url 'sales:sale_list' %}" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/product-search.js' %}"></script>
+<script src="{% static 'js/credit-warning.js' %}" defer></script>
+<script src="{% static 'js/sales/sale_form.js' %}" defer></script>
+{% endblock %}

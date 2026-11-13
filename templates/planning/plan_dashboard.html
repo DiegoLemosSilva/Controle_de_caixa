@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Planejamento - Controle de Caixa{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Planejamento financeiro</h1>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <a
+        class="btn btn-outline-secondary btn-sm"
+        href="?year={{ previous_year }}&month={{ previous_month }}"
+        aria-label="Mês anterior"
+    >
+        &laquo; Anterior
+    </a>
+    <span class="fw-bold fs-5 text-center">{{ month_label }} de {{ year }}</span>
+    <a
+        class="btn btn-outline-secondary btn-sm"
+        href="?year={{ next_year }}&month={{ next_month }}"
+        aria-label="Próximo mês"
+    >
+        Próximo &raquo;
+    </a>
+</div>
+
+<!-- Resumos do mês lado a lado -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-lg-4">
+        <div class="card border-success h-100">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Faturamento</span>
+                <button
+                    type="button" class="btn btn-sm btn-light"
+                    data-bs-toggle="modal" data-bs-target="#config-{{ revenue_indicator }}"
+                >
+                    Configurar metas
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 text-center mb-2">
+                    <div class="col-6">
+                        <div class="small text-muted">Planejado</div>
+                        <div class="fw-bold">R$ {{ revenue_summary.total_planned|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">Realizado</div>
+                        <div class="fw-bold text-success">R$ {{ revenue_summary.total_actual|floatformat:2 }}</div>
+                    </div>
+                </div>
+                {% if revenue_summary.percentage is not None %}
+                <p class="text-center small mb-0">
+                    Diferença:
+                    <span class="fw-bold {% if revenue_summary.difference > 0 %}text-success{% elif revenue_summary.difference < 0 %}text-danger{% endif %}">
+                        R$ {{ revenue_summary.difference|floatformat:2 }} ({{ revenue_summary.percentage|floatformat:1 }}%)
+                    </span>
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card border-danger h-100">
+            <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+                <span class="fw-bold">Gastos</span>
+                <button
+                    type="button" class="btn btn-sm btn-light"
+                    data-bs-toggle="modal" data-bs-target="#config-{{ expenses_indicator }}"
+                >
+                    Configurar metas
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 text-center mb-2">
+                    <div class="col-6">
+                        <div class="small text-muted">Planejado</div>
+                        <div class="fw-bold">R$ {{ expenses_summary.total_planned|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">Realizado</div>
+                        <div class="fw-bold text-danger">R$ {{ expenses_summary.total_actual|floatformat:2 }}</div>
+                    </div>
+                </div>
+                {% if expenses_summary.percentage is not None %}
+                <p class="text-center small mb-0">
+                    Diferença:
+                    <span class="fw-bold {% if expenses_summary.difference > 0 %}text-danger{% elif expenses_summary.difference < 0 %}text-success{% endif %}">
+                        R$ {{ expenses_summary.difference|floatformat:2 }} ({{ expenses_summary.percentage|floatformat:1 }}%)
+                    </span>
+                </p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-4">
+        <div class="card border-primary h-100">
+            <div class="card-header bg-primary text-white">
+                <span class="fw-bold">Receita (Faturamento &minus; Gastos)</span>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 text-center mb-2">
+                    <div class="col-6">
+                        <div class="small text-muted">Planejado</div>
+                        <div class="fw-bold">R$ {{ net_summary.total_planned|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="small text-muted">Realizado</div>
+                        <div class="fw-bold {% if net_summary.total_actual >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            R$ {{ net_summary.total_actual|floatformat:2 }}
+                        </div>
+                    </div>
+                </div>
+                {% if net_summary.percentage is not None %}
+                <p class="text-center small mb-0">
+                    Diferença:
+                    <span class="fw-bold {% if net_summary.difference > 0 %}text-success{% elif net_summary.difference < 0 %}text-danger{% endif %}">
+                        R$ {{ net_summary.difference|floatformat:2 }} ({{ net_summary.percentage|floatformat:1 }}%)
+                    </span>
+                </p>
+                {% endif %}
+                <p class="text-center small text-muted mb-0 mt-1">
+                    Calculado automaticamente a partir de Faturamento e Gastos.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modais de configuração de metas -->
+<div class="modal fade" id="config-{{ revenue_indicator }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Configurar metas - Faturamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% include "planning/_config_panel.html" with indicator=revenue_indicator %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="config-{{ expenses_indicator }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Configurar metas - Gastos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% include "planning/_config_panel.html" with indicator=expenses_indicator %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela única: dia compartilhado entre Faturamento e Gastos -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm table-striped align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th rowspan="2" class="align-middle">Dia</th>
+                        <th rowspan="2" class="align-middle">Data</th>
+                        <th colspan="4" class="text-center bg-success-subtle">Faturamento</th>
+                        <th colspan="4" class="text-center bg-danger-subtle">Gastos</th>
+                    </tr>
+                    <tr>
+                        <th class="text-end bg-success-subtle">Planej.</th>
+                        <th class="text-end bg-success-subtle">Real.</th>
+                        <th class="text-end bg-success-subtle">Dif.</th>
+                        <th class="text-center bg-success-subtle">&nbsp;</th>
+                        <th class="text-end bg-danger-subtle">Planej.</th>
+                        <th class="text-end bg-danger-subtle">Real.</th>
+                        <th class="text-end bg-danger-subtle">Dif.</th>
+                        <th class="text-center bg-danger-subtle">&nbsp;</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in merged_rows %}
+                    <tr>
+                        <td class="text-capitalize">{{ row.date|date:"D" }}</td>
+                        <td>{{ row.date|date:"d/m" }}</td>
+
+                        <!-- Faturamento -->
+                        <td class="text-end">R$ {{ row.revenue.planned|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if row.revenue.is_pending %}
+                                <span class="text-muted">Pendente</span>
+                            {% else %}
+                                R$ {{ row.revenue.actual|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if row.revenue.difference is not None %}
+                                <span class="{% if row.revenue.difference > 0 %}text-success{% elif row.revenue.difference < 0 %}text-danger{% endif %}">
+                                    R$ {{ row.revenue.difference|floatformat:2 }}
+                                </span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <button
+                                type="button" class="btn btn-sm btn-outline-success js-edit-day-card"
+                                data-indicator="{{ revenue_indicator }}"
+                                data-date="{{ row.date|date:'Y-m-d' }}"
+                                data-date-display="{{ row.date|date:'d/m' }}"
+                                data-planned="{{ row.revenue.planned|floatformat:2 }}"
+                                data-label="Faturamento"
+                            >
+                                Editar
+                            </button>
+                        </td>
+
+                        <!-- Gastos -->
+                        <td class="text-end">R$ {{ row.expenses.planned|floatformat:2 }}</td>
+                        <td class="text-end">
+                            {% if row.expenses.is_pending %}
+                                <span class="text-muted">Pendente</span>
+                            {% else %}
+                                R$ {{ row.expenses.actual|floatformat:2 }}
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            {% if row.expenses.difference is not None %}
+                                <span class="{% if row.expenses.difference < 0 %}text-success{% elif row.expenses.difference > 0 %}text-danger{% endif %}">
+                                    R$ {{ row.expenses.difference|floatformat:2 }}
+                                </span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <button
+                                type="button" class="btn btn-sm btn-outline-danger js-edit-day-card"
+                                data-indicator="{{ expenses_indicator }}"
+                                data-date="{{ row.date|date:'Y-m-d' }}"
+                                data-date-display="{{ row.date|date:'d/m' }}"
+                                data-planned="{{ row.expenses.planned|floatformat:2 }}"
+                                data-label="Gastos"
+                            >
+                                Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de edição de dia específico -->
+<div class="modal fade" id="editDayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'planning:set_daily_value' %}">
+                {% csrf_token %}
+                <input type="hidden" name="year" value="{{ year }}">
+                <input type="hidden" name="month" value="{{ month }}">
+                <input type="hidden" name="indicator" id="edit-day-indicator" value="">
+                <input type="hidden" name="date" id="edit-day-date" value="">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="edit-day-title">Editar previsão do dia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label">Valor planejado</label>
+                    <input
+                        type="number" step="0.01" min="0" name="amount"
+                        id="edit-day-amount" class="form-control" required
+                    >
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/planning/plan_dashboard.js' %}" defer></script>
+{% endblock %}

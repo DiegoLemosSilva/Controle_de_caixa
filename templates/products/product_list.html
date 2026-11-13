@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Produtos - Controle de Caixa{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/products/product_list.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Produtos</h1>
+    <a href="{% url 'products:product_create' %}" class="btn btn-primary btn-sm">Novo produto</a>
+</div>
+
+<p class="text-muted small">
+    Cadastro simples de produtos para agilizar o lançamento de vendas e
+    comandas. Não é um controle de estoque — serve apenas para
+    pré-preencher a descrição e o valor de um item.
+</p>
+
+<form method="get" class="row g-2 mb-3" role="search">
+    <div class="col-12 col-md-6">
+        <label class="visually-hidden" for="product-search">Pesquisar produto pelo nome</label>
+        <input id="product-search" name="q" value="{{ query }}" class="form-control" placeholder="Pesquisar produto pelo nome">
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-primary" type="submit">Pesquisar</button></div>
+    {% if query %}<div class="col-auto"><a class="btn btn-link" href="{% url 'products:product_list' %}">Limpar</a></div>{% endif %}
+</form>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Preço</th>
+                <th>Situação</th>
+                <th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td>R$ {{ product.price|floatformat:2 }}</td>
+                <td>
+                    {% if product.is_active %}
+                        <span class="badge bg-success">Ativo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inativo</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <div class="product-actions">
+                        <a
+                            href="{% url 'products:product_update' product.pk %}"
+                            class="btn btn-sm btn-outline-secondary product-actions-edit"
+                            aria-label="Editar produto"
+                        >
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                            <span>Editar</span>
+                        </a>
+                        <div class="dropdown d-inline-block">
+                            <button
+                                type="button"
+                                class="product-actions-more"
+                                data-bs-toggle="dropdown"
+                                aria-expanded="false"
+                                aria-label="Mais ações para {{ product.name }}"
+                            >
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                    <form method="post" action="{% url 'products:product_toggle_active' product.pk %}">
+                                        {% csrf_token %}
+                                        {% if product.is_active %}
+                                        <button type="submit" class="dropdown-item">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-2"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>
+                                            Inativar
+                                        </button>
+                                        {% else %}
+                                        <button type="submit" class="dropdown-item">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-2"><path d="M20 6 9 17l-5-5"/></svg>
+                                            Ativar
+                                        </button>
+                                        {% endif %}
+                                    </form>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form
+                                        method="post" action="{% url 'products:product_delete' product.pk %}"
+                                        class="js-confirm-product-delete"
+                                    >
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-2"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                                            Excluir
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="text-center text-muted">Nenhum produto encontrado.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'js/products/product_list.js' %}" defer></script>
+{% endblock %}

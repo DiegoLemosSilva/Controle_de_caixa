@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Contas a pagar - Controle de Caixa{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payables/payable_list.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Contas a pagar</h1>
+    <a href="{% url 'payables:payable_create' %}" class="btn btn-primary btn-sm">Nova conta</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a class="btn btn-outline-secondary btn-sm" href="?year={{ previous_year }}&month={{ previous_month }}" aria-label="Mês anterior">
+        <span aria-hidden="true">&lsaquo;</span> Anterior
+    </a>
+    <div class="text-center">
+        <div class="fw-bold">{{ month_label }} de {{ year }}</div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="?year={{ next_year }}&month={{ next_month }}" aria-label="Próximo mês">
+        Próximo <span aria-hidden="true">&rsaquo;</span>
+    </a>
+</div>
+
+<div class="payable-indicators">
+    <div class="payable-stat-card payable-stat-card--paid">
+        <span class="payable-stat-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <div>
+            <div class="payable-stat-label">Pagos</div>
+            <div class="payable-stat-value">R$ {{ paid_total|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="payable-stat-card payable-stat-card--pending">
+        <span class="payable-stat-icon">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </span>
+        <div>
+            <div class="payable-stat-label">A pagar</div>
+            <div class="payable-stat-value">R$ {{ pending_total|floatformat:2 }}</div>
+        </div>
+    </div>
+    <div class="payable-stat-card payable-stat-card--progress">
+        <div class="payable-stat-progress-head">
+            <span class="payable-stat-label mb-0">Pago no mês</span>
+            <span class="fw-bold">{{ percent_paid|floatformat:0 }}%</span>
+        </div>
+        <div class="payable-progress-track">
+            <div class="payable-progress-bar" style="width: {{ percent_paid|floatformat:0 }}%;"></div>
+        </div>
+    </div>
+</div>
+
+{% if overdue_payables %}
+<div class="payable-overdue-alert">
+    <button
+        type="button"
+        class="payable-overdue-toggle"
+        data-bs-toggle="collapse"
+        data-bs-target="#overdueList"
+        aria-expanded="false"
+        aria-controls="overdueList"
+    >
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        {{ overdue_payables|length }} conta{{ overdue_payables|length|pluralize }} vencida{{ overdue_payables|length|pluralize }}, aguardando pagamento
+        <svg class="payable-overdue-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <div class="collapse" id="overdueList">
+        <div class="payable-overdue-list">
+            {% for overdue in overdue_payables %}
+            <div class="payable-overdue-item">
+                <span>{{ overdue.description }} &mdash; previsto para {{ overdue.due_date|date:"d/m/Y" }} (R$ {{ overdue.balance|floatformat:2 }})</span>
+                <a href="{% url 'payables:payable_update' overdue.pk %}">Alterar data</a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle payable-table">
+        <thead>
+            <tr>
+                <th>Descrição</th>
+                <th>Fornecedor</th>
+                <th>Data prevista para pagamento</th>
+                <th class="text-end">Saldo devido</th>
+                <th>Situação</th>
+                <th class="text-end">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for payable in payables %}
+            <tr class="{% if payable.is_overdue %}payable-row--overdue{% endif %}">
+                <td data-label="Descrição">{{ payable.description }}</td>
+                <td data-label="Fornecedor">{{ payable.supplier_name|default:"-" }}</td>
+                <td data-label="Data prevista para pagamento">
+                    {{ payable.due_date|date:"d/m/Y" }}
+                    {% if payable.is_overdue %}
+                        <span class="badge bg-danger ms-1">Vencida</span>
+                    {% endif %}
+                </td>
+                <td data-label="Saldo devido" class="payable-amount">R$ {{ payable.balance|floatformat:2 }}</td>
+                <td data-label="Situação">
+                    {% with status=payable.effective_status %}
+                        {% if status == 'paid' %}
+                            <span class="badge bg-success payable-status-badge">
+                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                                Paga
+                            </span>
+                        {% elif status == 'cancelled' %}
+                            <span class="badge bg-secondary">Cancelada</span>
+                        {% elif status == 'overdue' %}
+                            <span class="badge bg-danger payable-status-badge">
+                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                Vencida
+                            </span>
+                        {% elif status == 'partially_paid' %}
+                            <span class="badge bg-info text-dark">Parcialmente paga</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark payable-status-badge">
+                                <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+                                Pendente
+                            </span>
+                        {% endif %}
+                    {% endwith %}
+                </td>
+                <td data-label="Ações" class="text-end payable-table-actions">
+                    <div class="payable-quick-actions">
+                        <a
+                            href="{% url 'payables:payable_update' payable.pk %}"
+                            class="payable-icon-btn"
+                            aria-label="Editar conta"
+                            title="Editar"
+                        >
+                            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                        </a>
+                        {% if payable.status == 'paid' %}
+                        <form method="post" action="{% url 'payables:payable_reopen' payable.pk %}" class="d-inline-block">
+                            {% csrf_token %}
+                            <button
+                                type="submit"
+                                class="payable-icon-btn payable-icon-btn--undo"
+                                aria-label="Marcar como pendente"
+                                title="Marcar como pendente"
+                            >
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 12 11 12"/></svg>
+                            </button>
+                        </form>
+                        {% elif payable.status != 'cancelled' %}
+                        <form method="post" action="{% url 'payables:payable_mark_paid' payable.pk %}" class="d-inline-block">
+                            {% csrf_token %}
+                            <button
+                                type="submit"
+                                class="payable-icon-btn payable-icon-btn--pay"
+                                aria-label="Marcar como paga"
+                                title="Marcar como paga"
+                            >
+                                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center text-muted">Nenhuma conta a pagar prevista para este mês.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

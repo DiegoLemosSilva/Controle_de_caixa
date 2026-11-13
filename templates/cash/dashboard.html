@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Caixa - Controle de Caixa{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/cash/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a
+        class="btn btn-outline-secondary btn-sm"
+        href="?date={{ previous_date|date:'Y-m-d' }}"
+        aria-label="Dia anterior"
+    >
+        &laquo; Anterior
+    </a>
+    <div class="text-center">
+        <span class="fw-bold fs-5">{{ selected_date|date:"d/m/Y" }}</span>
+        {% if is_today %}<span class="badge bg-primary ms-2">Hoje</span>{% endif %}
+        {% if is_closed %}
+            <span class="badge bg-secondary ms-2">Caixa fechado</span>
+        {% else %}
+            <span class="badge bg-success ms-2">Caixa aberto</span>
+        {% endif %}
+    </div>
+    <a
+        class="btn btn-outline-secondary btn-sm"
+        href="?date={{ next_date|date:'Y-m-d' }}"
+        aria-label="Próximo dia"
+    >
+        Próximo &raquo;
+    </a>
+</div>
+
+{% if is_closed %}
+<h1 class="h3 mb-4">Caixa</h1>
+
+{% if other_open_session %}
+<div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+        🟢 O caixa está aberto no dia
+        <strong>{{ other_open_session.date|date:"d/m/Y" }}</strong>.
+        Vá até essa data para continuar lançando vendas e comandas.
+    </div>
+    <a
+        href="{% url 'cash:dashboard' %}?date={{ other_open_session.date|date:'Y-m-d' }}"
+        class="btn btn-sm btn-primary"
+    >
+        Ir para {{ other_open_session.date|date:"d/m/Y" }}
+    </a>
+</div>
+{% endif %}
+
+{% if already_closed_today %}
+<div class="alert alert-secondary">
+    {% if is_operator %}
+        Caixa fechado. Novos lançamentos e conferências para
+        {{ selected_date|date:"d/m/Y" }} estão bloqueados.
+        A reabertura do caixa deve ser solicitada a um gerente/responsável.
+    {% else %}
+        O caixa do dia {{ selected_date|date:"d/m/Y" }} já foi fechado. Para reabrir
+        e continuar lançando movimentações nesta data, acesse a tela de
+        <a href="{% url 'cash:cash_count' %}?date={{ selected_date|date:'Y-m-d' }}">Conferência de caixa</a>.
+    {% endif %}
+</div>
+{% elif not other_open_session %}
+<div class="card">
+    <div class="card-body">
+        <h2 class="h5 mb-3">Abrir caixa</h2>
+        <p class="text-muted small">
+            O caixa deste dia ainda não foi aberto. Informe o valor em dinheiro
+            que está na gaveta para iniciar o movimento financeiro. Este valor
+            não é contabilizado como venda — é apenas o fundo de caixa físico.
+        </p>
+        <form method="post" action="{% url 'cash:open_session' %}">
+            {% csrf_token %}
+            {{ open_form.date }}
+            <div class="mb-3 cash-opening-amount">
+                <label class="form-label">{{ open_form.opening_amount.label }}</label>
+                {{ open_form.opening_amount }}
+                <div class="form-text">{{ open_form.opening_amount.help_text }}</div>
+                {% for error in open_form.opening_amount.errors %}
+                    <div class="text-danger small">{{ error }}</div>
+                {% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary">Abrir caixa</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="h3 mb-0">Caixa</h1>
+    <div class="d-flex gap-2">
+        <a href="{% url 'sales:comanda_create' %}" class="btn btn-outline-primary btn-sm">
+            <span aria-hidden="true">🧾</span> Nova comanda
+        </a>
+        <a href="{% url 'sales:sale_create' %}" class="btn btn-primary btn-sm">
+            + Nova venda
+        </a>
+        <a href="{% url 'cash:cash_count' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn btn-outline-secondary btn-sm">
+            Conferir caixa físico
+        </a>
+    </div>
+</div>
+
+<div class="d-flex justify-content-end align-items-center mb-3 flex-wrap gap-2">
+    <form method="get" class="d-flex gap-2">
+        <input type="hidden" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+        <input
+            type="search" name="q" class="form-control form-control-sm cash-comanda-search"
+            placeholder="Buscar por mesa, nome ou cliente..."
+            value="{{ search_query }}"
+        >
+        <button type="submit" class="btn btn-outline-secondary btn-sm">Buscar</button>
+    </form>
+</div>
+
+{% if comandas %}
+<div class="row g-3">
+    {% for comanda in comandas %}
+    <div class="col-12 col-sm-6 col-lg-4 col-xl-3">
+        <a
+            href="{% url 'sales:comanda_detail' comanda.pk %}"
+            class="card h-100 text-decoration-none text-reset border-warning"
+        >
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="fw-bold">
+                        {% if comanda.identifier %}{{ comanda.identifier }}{% else %}Comanda #{{ comanda.pk }}{% endif %}
+                    </span>
+                    <span class="badge bg-warning text-dark">Em aberto</span>
+                </div>
+                {% if comanda.customer %}
+                <div class="small text-muted mb-1">Cliente: {{ comanda.customer.name }}</div>
+                {% endif %}
+                <div class="small text-muted">Aberta há {{ comanda.elapsed_label }}</div>
+                <div class="text-end mt-2">
+                    <small class="text-primary">Continuar &rsaquo;</small>
+                </div>
+            </div>
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+    {% if search_query %}
+        <p class="mb-0">Nenhuma comanda em aberto encontrada para "{{ search_query }}".</p>
+    {% else %}
+        <p class="mb-2">Nenhuma comanda em aberto no momento.</p>
+        <a href="{% url 'sales:comanda_create' %}" class="btn btn-outline-primary btn-sm">
+            Abrir a primeira comanda
+        </a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Produto - Controle de Caixa{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">{% if object %}Editar produto{% else %}Novo produto{% endif %}</h1>
+<div class="row">
+    <div class="col-12 col-md-6">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Nome</label>
+                {{ form.name }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Preço de venda</label>
+                {{ form.price }}
+            </div>
+            <div class="form-check mb-3">
+                {{ form.is_active }}
+                <label class="form-check-label">Ativo</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'products:product_list' %}" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

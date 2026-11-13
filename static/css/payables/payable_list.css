@@ -1,0 +1,257 @@
+/* Tela de Contas a pagar — cartões de indicador, alerta de vencidas e tabela. */
+
+/* --- Cartões de indicador ------------------------------------------- */
+.payable-indicators {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+
+.payable-stat-card {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: 1rem 1.1rem;
+    border-radius: .75rem;
+    border: 1px solid #e5eaf2;
+    background: #fff;
+}
+
+.payable-stat-card .payable-stat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: .65rem;
+    flex-shrink: 0;
+}
+
+.payable-stat-card .payable-stat-label {
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    color: #71809a;
+    margin-bottom: .2rem;
+}
+
+.payable-stat-card .payable-stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #1b2434;
+    font-variant-numeric: tabular-nums;
+}
+
+.payable-stat-card--paid {
+    background: #f0faf4;
+    border-color: #cdeedb;
+}
+.payable-stat-card--paid .payable-stat-icon {
+    background: #19875420;
+    color: #198754;
+}
+
+.payable-stat-card--pending {
+    background: #fff9ec;
+    border-color: #f6e4b4;
+}
+.payable-stat-card--pending .payable-stat-icon {
+    background: #ffc10730;
+    color: #a9780a;
+}
+
+.payable-stat-card--progress {
+    flex-direction: column;
+    gap: .5rem;
+}
+.payable-stat-card--progress .payable-stat-progress-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    width: 100%;
+}
+.payable-progress-track {
+    width: 100%;
+    height: .5rem;
+    border-radius: 1rem;
+    background: #eef1f6;
+    overflow: hidden;
+}
+.payable-progress-bar {
+    height: 100%;
+    border-radius: 1rem;
+    background: #198754;
+    transition: width .3s ease;
+}
+
+/* --- Alerta de contas vencidas --------------------------------------- */
+.payable-overdue-alert {
+    border: 1px solid #f6c4c4;
+    background: #fdf1f1;
+    border-radius: .75rem;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+.payable-overdue-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .8rem 1rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    color: #b42318;
+    font-weight: 600;
+    cursor: pointer;
+}
+.payable-overdue-toggle svg {
+    flex-shrink: 0;
+}
+.payable-overdue-toggle .payable-overdue-chevron {
+    margin-left: auto;
+    transition: transform .2s ease;
+}
+.payable-overdue-toggle[aria-expanded="true"] .payable-overdue-chevron {
+    transform: rotate(180deg);
+}
+.payable-overdue-list {
+    padding: 0 1rem 1rem 1rem;
+}
+.payable-overdue-item {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: .4rem;
+    padding: .5rem 0;
+    border-top: 1px solid #f6c4c4;
+    font-size: .9rem;
+}
+.payable-overdue-item:first-child {
+    border-top: none;
+}
+
+/* --- Tabela ------------------------------------------------------------ */
+.payable-table thead th {
+    background: #f7f9fc;
+    font-size: .78rem;
+    text-transform: uppercase;
+    letter-spacing: .02em;
+    color: #71809a;
+    border-bottom: 1px solid #e5eaf2;
+}
+
+.payable-table td {
+    vertical-align: middle;
+}
+
+.payable-table .payable-amount {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.payable-row--overdue {
+    background: #fdf1f1 !important;
+}
+
+.payable-quick-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+}
+
+.payable-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    padding: 0;
+    border-radius: .55rem;
+    border: 1px solid #e5eaf2;
+    background: #fff;
+    color: #596b80;
+    transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.payable-icon-btn:hover,
+.payable-icon-btn:focus {
+    background: #f1f3f6;
+    color: #17243b;
+}
+.payable-icon-btn svg {
+    pointer-events: none;
+}
+
+.payable-icon-btn--pay {
+    border-color: #bfe3cd;
+    color: #198754;
+}
+.payable-icon-btn--pay:hover,
+.payable-icon-btn--pay:focus {
+    background: #e9f7ef;
+    color: #146c43;
+}
+
+.payable-icon-btn--undo {
+    border-color: #f6e4b4;
+    color: #a9780a;
+}
+.payable-icon-btn--undo:hover,
+.payable-icon-btn--undo:focus {
+    background: #fff5e0;
+    color: #8a6306;
+}
+
+.payable-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+}
+.payable-status-badge svg {
+    flex-shrink: 0;
+}
+
+/* --- Mobile: tabela em cartões ---------------------------------------- */
+@media (max-width: 767.98px) {
+    .payable-table thead {
+        display: none;
+    }
+    .payable-table, .payable-table tbody, .payable-table tr, .payable-table td {
+        display: block;
+        width: 100%;
+    }
+    .payable-table tr {
+        border: 1px solid #e5eaf2;
+        border-radius: .65rem;
+        margin-bottom: .75rem;
+        padding: .75rem .9rem;
+        background: #fff;
+    }
+    .payable-table tr.payable-row--overdue {
+        border-color: #f6c4c4;
+    }
+    .payable-table td {
+        border: none !important;
+        padding: .25rem 0;
+        text-align: left !important;
+    }
+    .payable-table td.payable-amount {
+        text-align: left;
+    }
+    .payable-table td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+        color: #96a2b8;
+        margin-bottom: .1rem;
+    }
+    .payable-table td.payable-table-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: .4rem;
+    }
+}

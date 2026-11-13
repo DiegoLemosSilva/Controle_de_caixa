@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}{% if object %}Editar conta a pagar{% else %}Nova conta a pagar{% endif %} - Controle de Caixa{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-4">{% if object %}Editar conta a pagar{% else %}Nova conta a pagar{% endif %}</h1>
+<div class="row">
+    <div class="col-12 col-md-6">
+        <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label">Descrição</label>
+                {{ form.description }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fornecedor (opcional)</label>
+                {{ form.supplier_name }}
+            </div>
+            {% if form.original_amount %}
+            <div class="mb-3">
+                <label class="form-label">Valor original</label>
+                {{ form.original_amount }}
+            </div>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label">Data prevista para pagamento</label>
+                {{ form.due_date }}
+            </div>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'payables:payable_list' %}" class="btn btn-link">Cancelar</a>
+        </form>
+    </div>
+</div>
+{% endblock %}

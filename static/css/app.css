@@ -1,0 +1,25 @@
+html, body {
+    height: 100%;
+}
+
+.table-balance-positive {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.card-indicator .card-body {
+    padding: 1rem;
+}
+
+/*
+ * Autocomplete de produtos (static/js/product-search.js).
+ * A lista de resultados usa classes nativas do Bootstrap
+ * (list-group, position-absolute, shadow-sm), mantendo o visual
+ * consistente com o resto do sistema. Aqui só ajustamos o
+ * arredondamento do topo, já que fica colado embaixo do campo de texto.
+ */
+.product-search-results {
+    top: 100%;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
