@@ -1,4 +1,4 @@
-"""Testes da configuração PostgreSQL sem conexão externa."""
+"""Testes da configuração do banco de dados (PostgreSQL e SQLite) sem conexão externa."""
 
 import os
 import subprocess
@@ -58,7 +58,7 @@ class DatabaseConfigurationTests(SimpleTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('DATABASE_URL é obrigatória', result.stderr)
 
-    def test_non_postgres_url_is_rejected(self):
+    def test_non_postgres_non_sqlite_url_is_rejected(self):
         result = self.run_settings('mysql://user:pass@example.invalid/db')
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('DATABASE_URL deve apontar para um banco PostgreSQL', result.stderr)
@@ -68,3 +68,13 @@ class DatabaseConfigurationTests(SimpleTestCase):
             'postgresql://user:password@example.invalid/db', gemini='True',
         )
         self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_sqlite_url_is_accepted_for_development(self):
+        result = self.run_settings('sqlite:///db-teste-config.sqlite3')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('django.db.backends.sqlite3', result.stdout)
+
+    def test_sqlite_memory_url_is_accepted(self):
+        result = self.run_settings('sqlite://:memory:')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('django.db.backends.sqlite3', result.stdout)

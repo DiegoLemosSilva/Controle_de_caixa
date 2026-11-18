@@ -112,19 +112,45 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+#
+# PostgreSQL é o banco padrão e obrigatório em produção (ver AGENTS.md).
+# Como exceção documentada, DATABASE_URL também aceita SQLite
+# (ex.: "sqlite:///db.sqlite3") exclusivamente para uso em ambientes de
+# DESENVOLVIMENTO isolados. SQLite não suporta bem múltiplos escritores
+# simultâneos e não possui as constraints de integridade reforçadas no
+# banco (RLS/triggers) usadas pelo PostgreSQL — por isso não deve ser
+# usado em produção nem em ambientes com múltiplos usuários concorrentes.
 
 import dj_database_url
 
+_ALLOWED_DB_ENGINES = {
+    'django.db.backends.postgresql',
+    'django.db.backends.sqlite3',
+}
+
 database_url = os.environ.get('DATABASE_URL', '').strip()
 if not database_url:
-    raise ValueError('DATABASE_URL é obrigatória para conectar ao PostgreSQL.')
+    raise ValueError('DATABASE_URL é obrigatória para conectar ao banco de dados.')
 DATABASES = {'default': dj_database_url.parse(database_url, conn_max_age=0)}
-# Verifica a saúde da conexão antes de reutilizá-la — garante que
-# conexões ociosas (ex.: NeonDB serverless) sejam descartadas ao invés
-# de lançar "SSL connection has been closed unexpectedly".
-DATABASES['default']['CONN_HEALTH_CHECKS'] = True
-if DATABASES['default']['ENGINE'] != 'django.db.backends.postgresql':
-    raise ValueError('DATABASE_URL deve apontar para um banco PostgreSQL.')
+
+if DATABASES['default']['ENGINE'] not in _ALLOWED_DB_ENGINES:
+    raise ValueError(
+        'DATABASE_URL deve apontar para um banco PostgreSQL (produção) ou, '
+        'apenas em desenvolvimento, SQLite (ex.: sqlite:///db.sqlite3).'
+    )
+
+if DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql':
+    # Verifica a saúde da conexão antes de reutilizá-la — garante que
+    # conexões ociosas (ex.: NeonDB serverless) sejam descartadas ao invés
+    # de lançar "SSL connection has been closed unexpectedly".
+    DATABASES['default']['CONN_HEALTH_CHECKS'] = True
+elif DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3':
+    # Resolve o caminho do arquivo .sqlite3 relativo ao BASE_DIR quando a
+    # URL usa um caminho relativo (ex.: "sqlite:///db.sqlite3"), evitando
+    # depender do diretório de onde o comando é executado.
+    _sqlite_name = DATABASES['default'].get('NAME', '')
+    if _sqlite_name and _sqlite_name != ':memory:' and not os.path.isabs(_sqlite_name):
+        DATABASES['default']['NAME'] = str(BASE_DIR / _sqlite_name)
 
 
 # Password validation

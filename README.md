@@ -58,6 +58,26 @@ proprietária não deve ser usada como papel normal da aplicação.
 O procedimento de auditoria, ensaio, corte e reversão está em
 [`docs/migracao-postgresql.md`](docs/migracao-postgresql.md).
 
+### Alternativa SQLite (somente desenvolvimento)
+
+Em uma máquina ou servidor de **desenvolvimento isolado**, é possível usar
+SQLite sem instalar/configurar um servidor PostgreSQL, trocando apenas a
+variável `DATABASE_URL` no `.env`:
+
+```
+DATABASE_URL=sqlite:///db.sqlite3
+```
+
+Nenhuma outra alteração é necessária — `python manage.py migrate` e
+`python manage.py runserver` funcionam normalmente com esse banco. **Não use
+essa opção em produção nem em ambientes com múltiplos usuários simultâneos**:
+o SQLite trava o banco inteiro durante escritas concorrentes e não possui as
+constraints de integridade reforçadas no banco (ex.: chaves estrangeiras por
+trigger) usadas pelo PostgreSQL — por isso alguns testes específicos de
+integridade entre empresas (`apps/core/test_tenant_foreign_keys.py`) são
+pulados automaticamente quando o banco não é PostgreSQL. O PostgreSQL
+continua sendo o banco padrão e obrigatório para produção.
+
 ## Criar o usuário administrador (vinculado a uma empresa)
 
 O sistema exige que cada usuário esteja vinculado a exatamente uma empresa
