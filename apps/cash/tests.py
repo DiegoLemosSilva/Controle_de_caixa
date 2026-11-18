@@ -13,7 +13,7 @@ from apps.payables.services import register_payment as pay_payable
 from apps.receivables.services import register_payment as pay_receivable
 from apps.sales.services import create_sale, open_comanda
 
-from .models import CashCountAdjustment, CashSession
+from .models import CashCountAdjustment, CashSession, CashSessionEvent
 from .services import (
     all_methods_checked,
     build_summary,
@@ -205,9 +205,8 @@ class CashIndicatorsTests(TestCase):
 
 class CashCountAdjustmentTests(TestCase):
     """
-    Garante que a conferência de caixa físico calcule corretamente o valor
-    esperado, a diferença (sobra/falta) e não permita registros sem
-    justificativa, preservando o histórico de conferências anteriores.
+    Garante o cálculo da diferença e a preservação do histórico, inclusive
+    quando a conferência não tem justificativa.
     """
 
     def setUp(self):
@@ -228,7 +227,7 @@ class CashCountAdjustmentTests(TestCase):
         expected = expected_amount_for_method(self.business, self.today, 'dinheiro')
         self.assertEqual(expected, Decimal('50.00'))
 
-    def test_register_cash_count_requires_reason_only_when_divergent(self):
+    def test_register_cash_count_without_divergence_does_not_require_reason(self):
         """Sem divergência, basta confirmar: a justificativa não é exigida."""
         create_sale(
             business=self.business,
@@ -247,17 +246,17 @@ class CashCountAdjustmentTests(TestCase):
         )
         self.assertEqual(adjustment.difference, Decimal('0.00'))
 
-    def test_register_cash_count_requires_reason_when_divergent(self):
-        """Com divergência (sobra ou falta), a justificativa é obrigatória."""
-        with self.assertRaises(ValidationError):
-            register_cash_count(
-                business=self.business,
-                user=self.user,
-                date=self.today,
-                payment_method='dinheiro',
-                counted_amount=Decimal('50.00'),
-                reason='',
-            )
+    def test_register_cash_count_allows_divergence_without_reason(self):
+        adjustment = register_cash_count(
+            business=self.business,
+            user=self.user,
+            date=self.today,
+            payment_method='dinheiro',
+            counted_amount=Decimal('50.00'),
+            reason='',
+        )
+        self.assertEqual(adjustment.difference, Decimal('50.00'))
+        self.assertEqual(adjustment.reason, '')
 
     def test_register_cash_count_calculates_shortage_correctly(self):
         create_sale(
@@ -345,7 +344,7 @@ class DailyClosureTests(TestCase):
     """
     Garante o fluxo de fechamento/reabertura diário: exige conferência
     completa antes de fechar, bloqueia novos lançamentos em dias fechados
-    e permite reabertura apenas com justificativa.
+    e registra o responsável pela reabertura.
     """
 
     def setUp(self):
@@ -390,12 +389,31 @@ class DailyClosureTests(TestCase):
         with self.assertRaises(ValidationError):
             close_cash_session(self.business, self.user, self.today)
 
-    def test_reopen_day_requires_reason(self):
+    def test_reopen_without_reason_records_audit_event(self):
         self._check_all_methods()
         close_cash_session(self.business, self.user, self.today)
 
-        with self.assertRaises(ValidationError):
-            reopen_cash_session(self.business, self.user, self.today, '')
+        session = reopen_cash_session(self.business, self.user, self.today)
+        self.assertTrue(session.is_open)
+        self.assertEqual(session.reopened_by, self.user)
+        self.assertIsNotNone(session.reopened_at)
+        event = CashSessionEvent.objects.get(
+            session=session, event_type=CashSessionEvent.EVENT_REOPENED
+        )
+        self.assertEqual(event.performed_by, self.user)
+        self.assertEqual(event.reason, '')
+
+    def test_reopening_preserves_previous_event_reason(self):
+        self._check_all_methods()
+        close_cash_session(self.business, self.user, self.today)
+        session = reopen_cash_session(self.business, self.user, self.today, 'Motivo anterior')
+        close_cash_session(self.business, self.user, self.today)
+
+        reopen_cash_session(self.business, self.user, self.today)
+        events = CashSessionEvent.objects.filter(
+            session=session, event_type=CashSessionEvent.EVENT_REOPENED
+        ).order_by('pk')
+        self.assertEqual(list(events.values_list('reason', flat=True)), ['Motivo anterior', ''])
 
     def test_reopen_day_allows_new_sale_again(self):
         self._check_all_methods()
@@ -566,9 +584,8 @@ class OpenCashSessionIndicatorTests(TestCase):
 
 class CashCountDetailViewTests(TestCase):
     """
-    Garante o novo fluxo de conferência: cada forma de pagamento tem sua
-    própria tela de detalhe; sem divergência basta confirmar; com
-    divergência a justificativa é obrigatória.
+    Garante a compatibilidade da conferência individual, com ou sem
+    divergência, sem exigir justificativa.
     """
 
     def setUp(self):
@@ -619,7 +636,7 @@ class CashCountDetailViewTests(TestCase):
         )
         self.assertEqual(adjustment.difference, Decimal('0.00'))
 
-    def test_divergent_submission_without_reason_shows_error(self):
+    def test_divergent_submission_without_reason_succeeds(self):
         create_sale(
             business=self.business,
             user=self.user,
@@ -636,13 +653,12 @@ class CashCountDetailViewTests(TestCase):
                 'reason': '',
             },
         )
-        # Permanece na própria tela (form_invalid), não redireciona.
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(
-            CashCountAdjustment.objects.filter(
-                business=self.business, date=self.today, payment_method='dinheiro'
-            ).exists()
+        self.assertEqual(response.status_code, 302)
+        adjustment = CashCountAdjustment.objects.get(
+            business=self.business, date=self.today, payment_method='dinheiro'
         )
+        self.assertEqual(adjustment.difference, Decimal('-10.00'))
+        self.assertEqual(adjustment.reason, '')
 
     def test_divergent_submission_with_reason_succeeds(self):
         create_sale(

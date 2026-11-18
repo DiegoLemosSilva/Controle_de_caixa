@@ -286,7 +286,9 @@ Permitir fechar o movimento financeiro de uma data.
 
 Após o fechamento, bloquear novos lançamentos para aquela data, incluindo alterações que afetem seus resultados financeiros.
 
-A reabertura deve exigir autorização e justificativa.
+A reabertura exige autorização, mas não exige justificativa, conforme
+decisão posterior do usuário. Registrar usuário, data e horário e
+preservar os motivos de eventos históricos.
 
 Registrar:
 
@@ -295,7 +297,7 @@ Registrar:
 - Usuário responsável.
 - Data e horário da reabertura.
 - Usuário responsável pela reabertura.
-- Motivo da reabertura.
+- Motivo da reabertura, quando informado em registros históricos.
 - Histórico dos eventos.
 
 Verificar o fechamento no backend em todas as operações financeiras relevantes. Desabilitar botões na interface não é suficiente.

@@ -3,13 +3,23 @@
 
 {% block title %}Planejamento - Controle de Caixa{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/planning/annual.css' %}">
+{% endblock %}
+
 {% block content %}
 <h1 class="h3 mb-3">Planejamento financeiro</h1>
+
+<nav class="planning-views mb-4" aria-label="Visões do planejamento">
+    <a class="planning-view{% if selected_view == 'daily' %} planning-view--active{% endif %}" href="?year={{ year }}&month={{ month }}&view=daily"{% if selected_view == 'daily' %} aria-current="page"{% endif %}><strong>Diária</strong><span>Detalhamento por dia</span></a>
+    <a class="planning-view{% if selected_view == 'weekly' %} planning-view--active{% endif %}" href="?year={{ year }}&month={{ month }}&view=weekly"{% if selected_view == 'weekly' %} aria-current="page"{% endif %}><strong>Semanal</strong><span>Resumo por semana</span></a>
+    <a class="planning-view{% if selected_view == 'annual' %} planning-view--active{% endif %}" href="?year={{ year }}&month={{ month }}&view=annual"{% if selected_view == 'annual' %} aria-current="page"{% endif %}><strong>Anual</strong><span>Comparação dos meses</span></a>
+</nav>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
     <a
         class="btn btn-outline-secondary btn-sm"
-        href="?year={{ previous_year }}&month={{ previous_month }}"
+        href="?year={{ previous_year }}&month={{ previous_month }}&view={{ selected_view }}"
         aria-label="Mês anterior"
     >
         &laquo; Anterior
@@ -17,7 +27,7 @@
     <span class="fw-bold fs-5 text-center">{{ month_label }} de {{ year }}</span>
     <a
         class="btn btn-outline-secondary btn-sm"
-        href="?year={{ next_year }}&month={{ next_month }}"
+        href="?year={{ next_year }}&month={{ next_month }}&view={{ selected_view }}"
         aria-label="Próximo mês"
     >
         Próximo &raquo;
@@ -157,6 +167,11 @@
     </div>
 </div>
 
+{% if selected_view == 'annual' %}
+    {% include "planning/_annual_summary.html" %}
+{% elif selected_view == 'weekly' %}
+    {% include "planning/_weekly_summary.html" %}
+{% else %}
 <!-- Tabela única: dia compartilhado entre Faturamento e Gastos -->
 <div class="card">
     <div class="card-body p-0">
@@ -255,6 +270,8 @@
     </div>
 </div>
 
+{% endif %}
+
 <!-- Modal de edição de dia específico -->
 <div class="modal fade" id="editDayModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -263,6 +280,7 @@
                 {% csrf_token %}
                 <input type="hidden" name="year" value="{{ year }}">
                 <input type="hidden" name="month" value="{{ month }}">
+                <input type="hidden" name="view" value="{{ selected_view }}">
                 <input type="hidden" name="indicator" id="edit-day-indicator" value="">
                 <input type="hidden" name="date" id="edit-day-date" value="">
                 <div class="modal-header">
@@ -288,4 +306,8 @@
 
 {% block extra_scripts %}
 <script src="{% static 'js/planning/plan_dashboard.js' %}" defer></script>
+{% if selected_view == 'annual' %}
+<script src="{% static 'js/vendor/echarts/echarts.min.js' %}" defer></script>
+<script src="{% static 'js/planning/annual_charts.js' %}" defer></script>
+{% endif %}
 {% endblock %}

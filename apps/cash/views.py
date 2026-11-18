@@ -13,9 +13,8 @@ from apps.businesses.mixins import BusinessRequiredMixin
 
 from apps.core.constants import PAYMENT_METHOD_CHOICES
 
-from .forms import CashCountForm, CloseDayForm, OpenCashSessionForm, ReopenDayForm
+from .forms import CashCountBatchForm, CashCountForm, CloseDayForm, OpenCashSessionForm, ReopenDayForm
 from .services import (
-    all_methods_checked,
     close_cash_session,
     expected_amount_for_method,
     get_open_session,
@@ -25,6 +24,7 @@ from .services import (
     open_cash_session,
     open_comandas_blocking_closure,
     register_cash_count,
+    register_cash_counts_batch,
     reopen_cash_session,
 )
 
@@ -143,10 +143,8 @@ class OpenCashSessionView(BusinessRequiredMixin, View):
 
 class CashCountView(BusinessRequiredMixin, TemplateView):
     """
-    Painel de conferência do caixa físico: exibe um card por forma de
-    pagamento com o status (Pendente/Conferido) e a diferença, se houver.
-    Cada card leva à tela de detalhe (CashCountDetailView) para registrar
-    a conferência daquela forma de pagamento especificamente.
+    Painel de conferência do caixa físico com envio conjunto por data.
+    As conferências registradas mantêm o histórico de cada forma de pagamento.
 
     Quando todas as formas de pagamento estiverem conferidas, permite
     fechar o caixa do dia, bloqueando novos lançamentos financeiros
@@ -162,22 +160,60 @@ class CashCountView(BusinessRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         selected_date = self.get_selected_date()
+        adjustments = latest_adjustments_for_date(self.business, selected_date)
+        form = kwargs.get('batch_form')
+        if form is None:
+            form = CashCountBatchForm(adjustments=adjustments, initial={'date': selected_date})
         context['selected_date'] = selected_date
-        context['adjustments'] = latest_adjustments_for_date(self.business, selected_date)
-        context['all_checked'] = all_methods_checked(self.business, selected_date)
+        context['adjustments'] = adjustments
+        context['batch_form'] = form
+        context['count_rows'] = [
+            {
+                'item': item,
+                'counted': form[f"counted_{item['payment_method']}"],
+                'expected': form[f"expected_{item['payment_method']}"],
+                'revision': form[f"revision_{item['payment_method']}"],
+            }
+            for item in adjustments
+        ]
+        context['all_checked'] = all(item['checked'] for item in adjustments)
         context['is_closed'] = is_date_closed(self.business, selected_date)
         context['open_comandas'] = open_comandas_blocking_closure(self.business, selected_date)
         context['close_form'] = CloseDayForm(initial={'date': selected_date})
         context['reopen_form'] = ReopenDayForm(initial={'date': selected_date})
         return context
 
+    def post(self, request):
+        selected_date = self.get_selected_date()
+        adjustments = latest_adjustments_for_date(self.business, selected_date)
+        form = CashCountBatchForm(request.POST, adjustments=adjustments)
+        if form.is_valid():
+            if form.cleaned_data['date'] != selected_date:
+                form.add_error(None, 'A data da conferência não corresponde à data selecionada.')
+            else:
+                entries = {
+                    item['payment_method']: {
+                        'counted': form.cleaned_data[f"counted_{item['payment_method']}"],
+                        'expected': form.cleaned_data[f"expected_{item['payment_method']}"],
+                        'revision': form.cleaned_data[f"revision_{item['payment_method']}"],
+                    }
+                    for item in adjustments
+                }
+                try:
+                    register_cash_counts_batch(self.business, request.user, selected_date, entries)
+                except ValidationError as exc:
+                    form.add_error(None, exc)
+                else:
+                    messages.success(request, 'Conferências registradas com sucesso.')
+                    return redirect(f"{reverse('cash:cash_count')}?date={selected_date:%Y-%m-%d}")
+        return self.render_to_response(self.get_context_data(batch_form=form))
+
 
 class CashCountDetailView(BusinessRequiredMixin, FormView):
     """
     Conferência de uma única forma de pagamento: mostra o valor esperado
     pelo sistema e permite confirmar o valor contado. Se os valores
-    coincidirem, basta confirmar (sem motivo). Se houver divergência, a
-    justificativa é obrigatória.
+    coincidirem, basta confirmar. Divergências não exigem justificativa.
     """
 
     template_name = 'cash/cash_count_detail.html'
@@ -242,7 +278,7 @@ class CashCountDetailView(BusinessRequiredMixin, FormView):
                 date=form.cleaned_data['date'],
                 payment_method=form.cleaned_data['payment_method'],
                 counted_amount=form.cleaned_data['counted_amount'],
-                reason=form.cleaned_data['reason'],
+                reason='',
             )
             messages.success(self.request, 'Conferência registrada com sucesso.')
         except ValidationError as exc:
@@ -277,7 +313,7 @@ class CloseDayView(BusinessRequiredMixin, View):
 
 class ReopenDayView(BusinessRequiredMixin, View):
     """
-    Reabre o caixa de um dia fechado, exigindo justificativa.
+    Reabre o caixa de um dia fechado.
 
     Exclusiva para usuários que não pertencem ao grupo "Operador": a
     reabertura de um caixa fechado é uma decisão gerencial, não uma
@@ -287,12 +323,12 @@ class ReopenDayView(BusinessRequiredMixin, View):
     def post(self, request):
         form = ReopenDayForm(request.POST)
         if not form.is_valid():
-            messages.error(request, 'Informe o motivo da reabertura.')
+            messages.error(request, 'Data inválida para reabertura.')
             return self._redirect(request.POST.get('date'))
 
         selected_date = form.cleaned_data['date']
         try:
-            reopen_cash_session(self.business, request.user, selected_date, form.cleaned_data['reason'])
+            reopen_cash_session(self.business, request.user, selected_date)
             messages.success(request, f'Caixa do dia {selected_date:%d/%m/%Y} reaberto com sucesso.')
         except ValidationError as exc:
             messages.error(request, str(exc.message) if hasattr(exc, 'message') else str(exc))

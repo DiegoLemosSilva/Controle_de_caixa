@@ -1,0 +1,29 @@
+<section class="annual-summary mb-4" aria-labelledby="weekly-summary-title">
+    <div class="annual-summary__heading">
+        <div>
+            <p class="annual-summary__eyebrow">Planejamento financeiro</p>
+            <h2 id="weekly-summary-title">Visão semanal <span>{{ month_label }} {{ year }}</span></h2>
+            <p class="annual-summary__description">Semanas de segunda a domingo, considerando somente os dias deste mês.</p>
+        </div>
+        <p class="annual-summary__note">Faturamento considera caixas fechados; gastos são apresentados pela data prevista da conta.</p>
+    </div>
+    <div class="annual-summary__grid">
+        {% for item in weekly_summary %}
+        <article class="annual-month">
+            <div class="annual-month__header">
+                <strong>{{ item.start|date:"d/m" }} a {{ item.end|date:"d/m" }}</strong>
+                <span class="annual-month__status">{{ item.status }}</span>
+            </div>
+            <table class="annual-month__table">
+                <thead><tr><th scope="col"><span class="visually-hidden">Indicador</span></th><th scope="col">Planejado</th><th scope="col">Realizado</th></tr></thead>
+                <tbody>
+                    <tr><th scope="row">Faturamento</th><td>R$ {{ item.revenue.total_planned|floatformat:2 }}</td><td>{% if item.status == 'Pendente' %}<span class="annual-month__pending">Pendente</span>{% else %}R$ {{ item.revenue.total_actual|floatformat:2 }}{% endif %}</td></tr>
+                    <tr><th scope="row">Gastos</th><td>R$ {{ item.expenses.total_planned|floatformat:2 }}</td><td>R$ {{ item.expenses.total_actual|floatformat:2 }}</td></tr>
+                    <tr class="annual-month__net"><th scope="row">Receita</th><td>R$ {{ item.net.total_planned|floatformat:2 }}</td><td>{% if item.status == 'Pendente' %}<span class="annual-month__pending">Pendente</span>{% else %}R$ {{ item.net.total_actual|floatformat:2 }}{% endif %}</td></tr>
+                </tbody>
+            </table>
+        </article>
+        {% endfor %}
+    </div>
+    <p class="annual-summary__footnote">O faturamento parcial considera somente caixas fechados. Gastos incluem pagamentos registrados para datas previstas futuras.</p>
+</section>

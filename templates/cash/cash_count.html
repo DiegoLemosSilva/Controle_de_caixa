@@ -1,23 +1,24 @@
 {% extends "base.html" %}
 {% load static %}
-
 {% block title %}Conferência de caixa - Controle de Caixa{% endblock %}
 
-{% block content %}
-<h1 class="h3 mb-4">Conferência de caixa</h1>
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/cash/cash_count.css' %}">
+{% endblock %}
 
-<form method="get" class="d-flex align-items-end gap-2 mb-4 flex-wrap">
-    <div>
-        <label for="cash-count-date" class="form-label small text-muted mb-1">Data a conferir</label>
-        <input
-            type="date" name="date" id="cash-count-date" class="form-control"
-            value="{{ selected_date|date:'Y-m-d' }}"
-        >
-    </div>
-    <button type="submit" class="btn btn-outline-secondary">Consultar</button>
-</form>
+{% block content %}
+<div class="cash-count-header">
+    <h1 class="h3">Conferência de caixa</h1>
+    <p class="text-muted">Data da conferência: <strong>{{ selected_date|date:"d/m/Y" }}</strong></p>
+</div>
 
 {% if is_closed %}
+{% if batch_form.is_bound and batch_form.errors %}
+<div class="alert alert-danger" role="alert">
+    Nenhuma conferência foi salva. O caixa está fechado; copie os valores digitados antes de sair da página.
+    {{ batch_form.non_field_errors }}
+</div>
+{% endif %}
 <div class="alert alert-secondary d-flex justify-content-between align-items-center flex-wrap gap-2">
     <div>
         <strong>Caixa fechado.</strong> Novos lançamentos e conferências para
@@ -41,71 +42,86 @@
         <form method="post" action="{% url 'cash:reopen_day' %}">
             {% csrf_token %}
             {{ reopen_form.date }}
-            <label class="form-label">{{ reopen_form.reason.label }}</label>
-            {{ reopen_form.reason }}
-            <button type="submit" class="btn btn-warning mt-2">Confirmar reabertura</button>
+            <button type="submit" class="btn btn-warning">Confirmar reabertura</button>
         </form>
     </div>
 </div>
 {% endif %}
 {% else %}
 <p class="text-muted small">
-    Toque em uma forma de pagamento para conferir o valor contado fisicamente.
+    Informe o valor contado em cada forma de pagamento e salve as conferências.
 </p>
 {% endif %}
 
+{% if not is_closed %}
+<form method="post" action="{% url 'cash:cash_count' %}?date={{ selected_date|date:'Y-m-d' }}" data-cash-count-batch>
+    {% csrf_token %}
+    {{ batch_form.date }}
+    {% if batch_form.errors %}
+    <div class="alert alert-danger" role="alert">
+        Confira os valores informados. Nenhuma conferência foi salva.
+        {{ batch_form.non_field_errors }}
+        {% for error in batch_form.date.errors %}<div>{{ error }}</div>{% endfor %}
+        {% if batch_form.non_field_errors %}
+        <p class="mb-0">Copie os valores digitados antes de recarregar para revisar os dados atualizados.</p>
+        {% endif %}
+    </div>
+    {% endif %}
+{% endif %}
 <div class="row g-3 mb-4">
-    {% for item in adjustments %}
+    {% for row in count_rows %}
+    {% with item=row.item %}
     <div class="col-12 col-md-6 col-lg-4">
-        <a
-            href="{% if not is_closed %}{% url 'cash:cash_count_detail' item.payment_method %}?date={{ selected_date|date:'Y-m-d' }}{% else %}#{% endif %}"
-            class="card h-100 text-decoration-none text-reset {% if item.stale %}border-warning{% elif item.checked %}{% if item.difference == 0 %}border-success{% else %}border-warning{% endif %}{% else %}border-light{% endif %} {% if is_closed %}disabled pe-none{% endif %}"
-        >
+        <div class="card cash-count-card h-100 {% if item.stale %}border-warning{% elif item.checked %}border-success{% endif %}">
             <div class="card-body">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <span class="fw-bold">{{ item.label }}</span>
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
+                    <h2 class="h5 mb-0">{{ item.label }}</h2>
                     {% if item.stale %}
-                        <span class="badge bg-warning text-dark">Desatualizado</span>
+                    <span class="badge bg-warning text-dark">Desatualizado</span>
                     {% elif item.checked %}
-                        {% if item.difference == 0 %}
-                            <span class="badge bg-success">Conferido &check;</span>
-                        {% elif item.difference > 0 %}
-                            <span class="badge bg-success">Sobra R$ {{ item.difference|floatformat:2 }}</span>
-                        {% else %}
-                            <span class="badge bg-danger">Falta R$ {{ item.difference|floatformat:2|cut:"-" }}</span>
-                        {% endif %}
+                    <span class="badge bg-success">Conferido</span>
                     {% else %}
-                        <span class="badge bg-secondary">Pendente</span>
+                    <span class="badge bg-secondary">Pendente</span>
                     {% endif %}
                 </div>
                 <div class="small text-muted">Esperado pelo sistema</div>
-                <div class="fw-bold mb-2">R$ {{ item.expected_amount|floatformat:2 }}</div>
-                {% if item.stale %}
-                <div class="small text-warning-emphasis">
-                    Houve novos lançamentos após a última conferência
-                    (valor contado anterior: R$ {{ item.previous_counted_amount|floatformat:2 }}).
-                    Confira novamente para atualizar.
-                </div>
-                <div class="text-end mt-2">
-                    <small class="text-primary">Conferir novamente &rsaquo;</small>
-                </div>
-                {% elif item.checked %}
-                <div class="small text-muted">Contado fisicamente</div>
-                <div class="fw-bold mb-2">R$ {{ item.counted_amount|floatformat:2 }}</div>
-                {% if item.reason %}
-                <div class="small text-muted">Justificativa</div>
-                <div class="small">{{ item.reason }}</div>
-                {% endif %}
+                <p class="cash-count-expected fw-bold mb-3">R$ {{ item.expected_amount|floatformat:2 }}</p>
+                {% if is_closed %}
+                    {% if batch_form.is_bound %}
+                    <p class="small mb-1">Valor digitado não salvo: {{ row.counted.value|default_if_none:"" }}</p>
+                    {% endif %}
+                    {% if item.checked %}
+                    <div class="small text-muted">Contado fisicamente</div>
+                    <p class="fw-bold mb-1">R$ {{ item.counted_amount|floatformat:2 }}</p>
+                    {% if item.difference > 0 %}<span>Sobra R$ {{ item.difference|floatformat:2 }}</span>
+                    {% elif item.difference < 0 %}<span>Falta R$ {{ item.difference|floatformat:2|cut:"-" }}</span>{% endif %}
+                    {% if item.reason %}<p class="small text-muted mt-2 mb-0">Justificativa anterior: {{ item.reason }}</p>{% endif %}
+                    {% endif %}
                 {% else %}
-                <div class="text-end mt-2">
-                    <small class="text-primary">Conferir &rsaquo;</small>
-                </div>
+                    {{ row.expected }}{{ row.revision }}
+                    {% for error in row.expected.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    {% for error in row.revision.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    <label class="form-label" for="{{ row.counted.id_for_label }}">Valor contado</label>
+                    {{ row.counted }}
+                    <p class="small mt-2 mb-0" data-count-difference aria-live="polite"></p>
+                    {% for error in row.counted.errors %}<div class="text-danger small" role="alert">{{ error }}</div>{% endfor %}
+                    {% if item.stale %}
+                    <p class="small text-warning-emphasis mt-2 mb-0">Valor anterior: R$ {{ item.previous_counted_amount|floatformat:2 }}. Confira novamente.</p>
+                    {% elif item.checked %}
+                        {% if item.difference > 0 %}<p class="small mt-2 mb-0">Última conferência: sobra R$ {{ item.difference|floatformat:2 }}</p>
+                        {% elif item.difference < 0 %}<p class="small mt-2 mb-0">Última conferência: falta R$ {{ item.difference|floatformat:2|cut:"-" }}</p>{% endif %}
+                    {% endif %}
                 {% endif %}
             </div>
-        </a>
+        </div>
     </div>
+    {% endwith %}
     {% endfor %}
 </div>
+{% if not is_closed %}
+    <div class="cash-count-actions"><button type="submit" class="btn btn-primary">Salvar conferências</button></div>
+</form>
+{% endif %}
 
 {% if not is_closed %}
 {% if open_comandas %}
@@ -152,7 +168,8 @@
             {{ close_form.date }}
             <button
                 type="submit" class="btn btn-success"
-                {% if not all_checked or open_comandas %}disabled{% endif %}
+                data-close-cash
+                {% if not all_checked or open_comandas or batch_form.errors %}disabled{% endif %}
             >
                 Fechar caixa do dia
             </button>
@@ -163,5 +180,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{% static 'js/cash/cash_count.js' %}" defer></script>
+<script src="{% static 'js/cash/cash_count_batch.js' %}" defer></script>
 {% endblock %}

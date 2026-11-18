@@ -12,7 +12,10 @@ from django.utils import timezone
 
 from apps.businesses.models import Business
 from apps.cash.models import CashCountAdjustment
-from apps.cash.services import close_cash_session, open_cash_session, register_cash_count
+from apps.cash.services import (
+    close_cash_session, latest_adjustments_for_date, open_cash_session,
+    register_cash_count, register_cash_counts_batch,
+)
 from apps.customers.models import Customer
 from apps.payables.models import Payable
 from apps.payables.services import register_payment as pay_payable
@@ -147,6 +150,24 @@ class PaymentConcurrencyTests(TransactionTestCase):
     def test_cash_count_after_concurrent_closure_is_rejected(self):
         def operation(business, user):
             register_cash_count(business, user, self.today, 'dinheiro', Decimal('0.00'), '')
+
+        self.assert_operation_rejected_after_concurrent_closure(operation)
+        self.assertEqual(
+            CashCountAdjustment.objects.filter(business=self.business, date=self.today).count(), 5
+        )
+
+    def test_batch_count_after_concurrent_closure_is_rejected(self):
+        def operation(business, user):
+            items = latest_adjustments_for_date(business, self.today)
+            entries = {
+                item['payment_method']: {
+                    'counted': Decimal('0.00'),
+                    'expected': item['expected_amount'],
+                    'revision': item['revision'],
+                }
+                for item in items
+            }
+            register_cash_counts_batch(business, user, self.today, entries)
 
         self.assert_operation_rejected_after_concurrent_closure(operation)
         self.assertEqual(

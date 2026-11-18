@@ -11,7 +11,9 @@ lançamentos financeiros (ver ensure_date_open). Só pode existir uma
 sessão aberta por empresa a qualquer momento (regra de caixa único).
 """
 
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
+
+from django.core.validators import DecimalValidator
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -185,6 +187,17 @@ def expected_amount_for_method(business, date, payment_method):
     return received
 
 
+def _validate_counted_amount(value):
+    try:
+        amount = Decimal(value)
+        if not amount.is_finite() or amount < 0:
+            raise ValidationError('Informe um valor contado válido e não negativo.')
+        DecimalValidator(12, 2)(amount)
+    except (InvalidOperation, TypeError, ValueError):
+        raise ValidationError('Informe um valor contado válido e não negativo.')
+    return amount
+
+
 @transaction.atomic
 def register_cash_count(business, user, date, payment_method, counted_amount, reason):
     """
@@ -192,22 +205,16 @@ def register_cash_count(business, user, date, payment_method, counted_amount, re
     em um dia específico. O valor esperado é calculado automaticamente
     pelo sistema no momento do registro.
 
-    A justificativa só é obrigatória quando houver divergência entre o
-    valor contado e o valor esperado pelo sistema. Quando os valores
-    coincidem, o operador apenas confirma a conferência, sem necessidade
-    de preencher um motivo.
+    Divergências podem ser registradas sem justificativa. Motivos antigos
+    permanecem preservados no histórico.
     """
     lock_date_open(business, date)
 
-    counted_amount = Decimal(counted_amount)
+    if payment_method not in dict(PAYMENT_METHOD_CHOICES):
+        raise ValidationError('Forma de pagamento inválida.')
+    counted_amount = _validate_counted_amount(counted_amount)
     expected_amount = expected_amount_for_method(business, date, payment_method)
     reason = (reason or '').strip()
-
-    if counted_amount != expected_amount and not reason:
-        raise ValidationError(
-            'É obrigatório informar a justificativa quando o valor contado '
-            'é diferente do valor esperado pelo sistema.'
-        )
 
     return CashCountAdjustment.objects.create(
         business=business,
@@ -229,7 +236,7 @@ def _latest_adjustments_queryset(business, start_date, end_date):
         business=business,
         date__gte=start_date,
         date__lte=end_date,
-    ).order_by('date', 'payment_method', '-created_at')
+    ).order_by('date', 'payment_method', '-created_at', '-pk')
 
     latest_by_key = {}
     for adjustment in all_adjustments:
@@ -271,6 +278,7 @@ def latest_adjustments_for_date(business, date):
                 results.append({
                     'payment_method': code,
                     'label': label,
+                    'revision': adjustment.pk,
                     'expected_amount': current_expected,
                     'counted_amount': None,
                     'difference': None,
@@ -283,6 +291,7 @@ def latest_adjustments_for_date(business, date):
                 results.append({
                     'payment_method': code,
                     'label': label,
+                    'revision': adjustment.pk,
                     'expected_amount': adjustment.expected_amount,
                     'counted_amount': adjustment.counted_amount,
                     'difference': adjustment.difference,
@@ -295,6 +304,7 @@ def latest_adjustments_for_date(business, date):
             results.append({
                 'payment_method': code,
                 'label': label,
+                'revision': 0,
                 'expected_amount': current_expected,
                 'counted_amount': None,
                 'difference': None,
@@ -304,6 +314,30 @@ def latest_adjustments_for_date(business, date):
                 'previous_counted_amount': None,
             })
     return results
+
+
+@transaction.atomic
+def register_cash_counts_batch(business, user, date, entries):
+    """Registra todas as contagens após verificar alterações concorrentes."""
+    lock_date_open(business, date)
+    current = latest_adjustments_for_date(business, date)
+    if set(entries) != {item['payment_method'] for item in current}:
+        raise ValidationError('Informe todas as formas de pagamento.')
+
+    for item in current:
+        entry = entries[item['payment_method']]
+        _validate_counted_amount(entry['counted'])
+        if entry['expected'] != item['expected_amount'] or entry['revision'] != item['revision']:
+            raise ValidationError(
+                'Os valores ou conferências mudaram. Recarregue a página e revise os dados antes de salvar.'
+            )
+
+    for item in current:
+        counted = entries[item['payment_method']]['counted']
+        if not item['checked'] or counted != item['counted_amount']:
+            register_cash_count(
+                business, user, date, item['payment_method'], counted, ''
+            )
 
 
 def all_methods_checked(business, date):
@@ -484,16 +518,14 @@ def close_cash_session(business, user, date):
 
 
 @transaction.atomic
-def reopen_cash_session(business, user, date, reason):
+def reopen_cash_session(business, user, date, reason=''):
     """
-    Reabre uma sessão de caixa fechada, exigindo justificativa.
+    Reabre uma sessão de caixa fechada e registra o responsável.
 
     Rejeita a reabertura se já existir outra sessão aberta no momento
     (regra de caixa único): é preciso fechar a sessão atual primeiro.
     """
-    if not reason or not reason.strip():
-        raise ValidationError('É obrigatório informar o motivo da reabertura.')
-
+    reason = (reason or '').strip()
     Business.objects.select_for_update().get(pk=business.pk)
     session = get_session_for_date(business, date)
     if session is None or session.is_open:

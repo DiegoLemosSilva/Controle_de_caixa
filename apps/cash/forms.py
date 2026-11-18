@@ -29,13 +29,42 @@ class CloseDayForm(forms.Form):
 
 
 class ReopenDayForm(forms.Form):
-    """Formulário de reabertura de um dia fechado, com justificativa obrigatória."""
+    """Formulário de reabertura de um dia fechado."""
 
     date = forms.DateField(widget=forms.HiddenInput())
-    reason = forms.CharField(
-        label='Motivo da reabertura',
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-    )
+
+
+class CashCountBatchForm(forms.Form):
+    """Valores contados e valores esperados exibidos para cada forma."""
+
+    date = forms.DateField(widget=forms.HiddenInput())
+
+    def __init__(self, *args, adjustments, **kwargs):
+        super().__init__(*args, **kwargs)
+        for item in adjustments:
+            method = item['payment_method']
+            self.fields[f'counted_{method}'] = forms.DecimalField(
+                label=item['label'],
+                min_value=0,
+                max_digits=12,
+                decimal_places=2,
+                widget=forms.NumberInput(attrs={
+                    'class': 'form-control', 'step': '0.01',
+                    'min': '0', 'inputmode': 'decimal',
+                }),
+                initial=item['counted_amount'] if item['checked'] else None,
+            )
+            self.fields[f'expected_{method}'] = forms.DecimalField(
+                max_digits=12,
+                decimal_places=2,
+                widget=forms.HiddenInput(),
+                initial=item['expected_amount'],
+            )
+            self.fields[f'revision_{method}'] = forms.IntegerField(
+                min_value=0,
+                widget=forms.HiddenInput(),
+                initial=item['revision'],
+            )
 
 
 class CashCountForm(forms.Form):
@@ -59,13 +88,6 @@ class CashCountForm(forms.Form):
         decimal_places=2,
         widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
     )
-    reason = forms.CharField(
-        label='Justificativa',
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-        help_text='Obrigatória apenas se o valor contado for diferente do esperado.',
-    )
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['date'].initial = timezone.localdate()

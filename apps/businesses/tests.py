@@ -150,7 +150,7 @@ class OperatorGroupRestrictionTests(TestCase):
         self.client.login(username='operador', password='senha12345')
         response = self.client.post(
             reverse('cash:reopen_day'),
-            data={'date': today, 'reason': 'Tentando reabrir'},
+            data={'date': today},
         )
         self.assertEqual(response.status_code, 403)
 
@@ -182,7 +182,7 @@ class OperatorGroupRestrictionTests(TestCase):
         self.client.login(username='gerente', password='senha12345')
         response = self.client.post(
             reverse('cash:reopen_day'),
-            data={'date': today, 'reason': 'Correção de lançamento'},
+            data={'date': today},
         )
         self.assertEqual(response.status_code, 302)
         self.assertFalse(is_date_closed(self.business, today))

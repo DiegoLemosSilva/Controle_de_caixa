@@ -9,6 +9,7 @@ Django, Django Templates, Bootstrap 5, JavaScript puro e PostgreSQL.
 - Python 3.11+ e Django 5.2
 - Django Templates + Bootstrap 5 (via CDN)
 - JavaScript puro (sem frameworks)
+- Apache ECharts 6.1.0 para gráficos, distribuído localmente
 - PostgreSQL
 - PWA (Web App Manifest + Service Worker)
 - API do Google Gemini (opcional, desativável)
@@ -177,7 +178,7 @@ Os testes cobrem, entre outros pontos exigidos pelo `AGENTS.md`:
 - Rejeição de pagamento superior ao saldo devido.
 - Cálculo de indicadores financeiros sem dupla contagem.
 - Conferência de caixa físico (sobra/falta) com valor esperado calculado
-  automaticamente e justificativa obrigatória.
+  automaticamente; divergências não exigem justificativa.
 - Abertura obrigatória do caixa (com valor inicial em dinheiro) antes de
   qualquer lançamento financeiro, com regra de caixa único (apenas um
   caixa aberto por vez).
@@ -235,6 +236,22 @@ uma operação, confira o histórico antes de tentar novamente, pois ela pode
 ter sido registrada no servidor mesmo sem confirmação na tela. Não há
 sincronização offline de transações.
 
+## Gráficos e visualização de dados
+
+O Apache ECharts é o padrão para gráficos do projeto. O arquivo compilado
+6.1.0 e seus avisos de licença estão em `static/js/vendor/echarts/`; não
+são necessários Node.js, npm ou CDN para usá-lo. A visão anual carrega a
+biblioteca apenas quando necessária. O comparativo de faturamento e gastos
+usa barras verticais agrupadas; os gráficos de planejado versus realizado
+usam barras horizontais agrupadas.
+
+Os cálculos financeiros permanecem no Django. Meses pendentes não são
+tratados como zero; meses parciais são identificados. As tabelas de valores
+exatos ficam ocultas visualmente e disponíveis para leitores de tela; se a
+biblioteca não carregar, o gráfico SVG original continua disponível. Ao adicionar gráficos, escolha
+a visualização adequada aos dados, preserve as definições dos indicadores,
+a acessibilidade e o isolamento entre empresas.
+
 ## Estrutura do projeto
 
 ```
@@ -256,6 +273,18 @@ static/             CSS, JS e arquivos do PWA
 
 ## Limitações conhecidas do MVP
 
+- Em Planejamento, cartões permitem alternar entre as visões diária,
+  semanal e anual. As semanas vão de segunda a domingo e incluem somente
+  os dias do mês selecionado. A visão anual apresenta gráficos dos 12 meses
+  do ano do mês selecionado: comparativo de faturamento e gastos realizados
+  e comparações entre planejado e realizado para cada indicador. Tabelas
+  acessíveis a leitores de tela apresentam valores exatos e a situação de cada mês.
+  O faturamento considera os valores conferidos em caixas fechados e pode
+  ser parcial quando há dias sem fechamento. Os gastos são agrupados pela
+  data prevista da conta, inclusive para pagamentos já registrados com
+  data prevista futura; esse critério é diferente do fluxo de caixa efetivo.
+  A receita exibida é a diferença entre faturamento e gastos, não uma
+  demonstração contábil de lucro.
 - O limite de fiado no cadastro de clientes é opcional e informativo:
   ultrapassá-lo gera um aviso, mas não bloqueia vendas nem comandas.
   O aviso considera o saldo em aberto e o fiado registrado em comandas
@@ -296,11 +325,11 @@ static/             CSS, JS e arquivos do PWA
   exige que todas as formas de pagamento tenham sido conferidas fisicamente
   e que não existam comandas abertas. Após o fechamento, novos lançamentos
   financeiros (vendas, recebimentos de fiado, pagamentos de contas) para
-  aquela data são bloqueados no backend. A reabertura exige justificativa
-  e é bloqueada se já houver outro caixa aberto no momento.
-- A diferença entre o caixa físico e o valor esperado pelo sistema é
-  resolvida pela "Conferência de caixa": o operador informa o valor
-  contado por forma de pagamento e o sistema calcula a sobra/falta
-  automaticamente. Cada conferência é um registro histórico e auditável
-  (nunca editado ou apagado); uma correção gera uma nova conferência,
-  preservando a anterior.
+  aquela data são bloqueados no backend. A reabertura é restrita a usuários
+  autorizados, registra responsável e horário, e é bloqueada se já houver
+  outro caixa aberto no momento. Não é solicitado motivo.
+- Na "Conferência de caixa", o operador informa os valores contados e os
+  salva em conjunto. O sistema calcula a sobra ou falta sem exigir
+  justificativa. Cada conferência preserva o histórico; uma correção gera
+  um novo registro. Os motivos de reabertura registrados anteriormente
+  permanecem no histórico.

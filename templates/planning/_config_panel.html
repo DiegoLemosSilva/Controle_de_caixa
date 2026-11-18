@@ -3,6 +3,7 @@
     {% csrf_token %}
     <input type="hidden" name="year" value="{{ year }}">
     <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="view" value="{{ selected_view }}">
     <input type="hidden" name="indicator" value="{{ indicator }}">
     <div class="row g-2">
         <div class="col-6">
@@ -44,6 +45,7 @@
     {% csrf_token %}
     <input type="hidden" name="year" value="{{ year }}">
     <input type="hidden" name="month" value="{{ month }}">
+    <input type="hidden" name="view" value="{{ selected_view }}">
     <input type="hidden" name="indicator" value="{{ indicator }}">
     <button type="submit" class="btn btn-outline-secondary btn-sm">Copiar</button>
 </form>

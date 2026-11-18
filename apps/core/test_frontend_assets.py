@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 import re
 from types import SimpleNamespace
@@ -6,6 +7,9 @@ from django.conf import settings
 from django.contrib.staticfiles import finders
 from django.template.loader import get_template, render_to_string
 from django.test import SimpleTestCase
+from django.urls import reverse
+
+from apps.cash.forms import CashCountBatchForm, CloseDayForm, ReopenDayForm
 
 
 class FrontendAssetsTests(SimpleTestCase):
@@ -16,7 +20,7 @@ class FrontendAssetsTests(SimpleTestCase):
             "sales/comanda_detail.html": ["js/product-search.js", "js/sales/comanda_detail.js", "js/credit-warning.js"],
             "customers/customer_list.html": ["js/customers/customer_list.js"],
             "cash/dashboard.html": ["css/cash/dashboard.css"],
-            "cash/cash_count.html": ["js/cash/cash_count.js"],
+            "cash/cash_count.html": ["css/cash/cash_count.css", "js/cash/cash_count_batch.js"],
             "cash/cash_count_detail.html": ["js/cash/cash_count_detail.js"],
             "planning/plan_dashboard.html": ["js/planning/plan_dashboard.js"],
             "ai_assistant/analysis_list.html": ["css/ai_assistant/analysis.css"],
@@ -44,11 +48,46 @@ class FrontendAssetsTests(SimpleTestCase):
         self.assertIn('id="payment-customer-field" hidden', source)
         self.assertIn('id="edit-payment-customer-field" hidden', source)
 
-    def test_cash_date_filter_has_manual_submit(self):
-        html = render_to_string("cash/cash_count.html", {"is_closed": True, "is_operator": True})
-        self.assertIn('id="cash-count-date"', html)
-        self.assertIn('type="submit" class="btn btn-outline-secondary">Consultar', html)
-        self.assertIn("/static/js/cash/cash_count.js", html)
+    def test_cash_count_preserves_selected_date_without_filter(self):
+        selected_date = date(2026, 11, 13)
+        adjustments = [{
+            "payment_method": "dinheiro", "label": "Dinheiro",
+            "expected_amount": 0, "counted_amount": None,
+            "revision": 0, "checked": False, "stale": False,
+        }]
+        batch_form = CashCountBatchForm(adjustments=adjustments, initial={"date": selected_date})
+        context = {
+            "selected_date": selected_date,
+            "is_operator": False,
+            "adjustments": adjustments,
+            "batch_form": batch_form,
+            "count_rows": [{
+                "item": adjustments[0], "counted": batch_form["counted_dinheiro"],
+                "expected": batch_form["expected_dinheiro"],
+                "revision": batch_form["revision_dinheiro"],
+            }],
+            "close_form": CloseDayForm(initial={"date": selected_date}),
+            "reopen_form": ReopenDayForm(initial={"date": selected_date}),
+        }
+        for is_closed in (False, True):
+            with self.subTest(is_closed=is_closed):
+                html = render_to_string("cash/cash_count.html", {**context, "is_closed": is_closed})
+                self.assertIn("Data da conferência:", html)
+                self.assertIn("13/11/2026", html)
+                self.assertNotIn('id="cash-count-date"', html)
+                self.assertNotIn("Data a conferir", html)
+                self.assertNotIn(">Consultar</button>", html)
+                self.assertNotIn("/static/js/cash/cash_count.js", html)
+                self.assertIn('type="hidden" name="date" value="2026-11-13"', html)
+                if not is_closed:
+                    self.assertIn(f'{reverse("cash:cash_count")}?date=2026-11-13', html)
+                    self.assertIn('name="counted_dinheiro"', html)
+                    self.assertIn("Salvar conferências", html)
+                    self.assertIn(reverse("cash:close_day"), html)
+                else:
+                    self.assertIn(reverse("cash:reopen_day"), html)
+                    self.assertIn("Confirmar reabertura", html)
+                    self.assertNotIn('name="reason"', html)
 
     def test_service_worker_registration_only_for_authenticated_users(self):
         for authenticated in (False, True):

@@ -1,0 +1,55 @@
+.cash-count-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.cash-count-header h1,
+.cash-count-header p {
+    margin: 0;
+}
+
+.cash-count-card {
+    border-color: #dce3ed;
+    border-radius: .85rem;
+    box-shadow: 0 2px 8px rgba(24, 39, 65, .05);
+}
+
+.cash-count-expected {
+    color: #26374e;
+    font-size: 1.3rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.cash-count-card .form-control {
+    min-height: 48px;
+    font-size: 1.1rem;
+}
+
+.cash-count-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.cash-count-actions .btn {
+    min-height: 48px;
+    padding-inline: 1.5rem;
+}
+
+@media (max-width: 767.98px) {
+    .cash-count-header {
+        display: block;
+    }
+
+    .cash-count-header p {
+        margin-top: .5rem;
+    }
+
+    .cash-count-actions .btn {
+        width: 100%;
+    }
+}

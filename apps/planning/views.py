@@ -11,6 +11,7 @@ from django.views.generic import TemplateView
 from apps.businesses.mixins import BusinessRequiredMixin
 from apps.cash.services import daily_revenue
 
+from .annual import build_annual_charts, build_annual_summary
 from .forms import DailyValueForm, WeekdayValuesForm
 from .models import FinancialPlan
 from .services import apply_weekday_values, build_comparison, copy_previous_month, set_daily_value
@@ -104,6 +105,9 @@ class PlanDashboardView(BusinessRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         year, month = self.get_year_month()
+        selected_view = self.request.GET.get('view', 'daily')
+        if selected_view not in ('daily', 'weekly', 'annual'):
+            selected_view = 'daily'
 
         revenue_actuals = _revenue_actuals_by_date(self.business, year, month)
         expenses_actuals = _expenses_actuals_by_date(self.business, year, month)
@@ -132,6 +136,11 @@ class PlanDashboardView(BusinessRequiredMixin, TemplateView):
             for revenue_entry, expenses_entry in zip(revenue_comparison, expenses_comparison)
         ]
 
+        annual_summary = (
+            build_annual_summary(self.business, year, month)
+            if selected_view == 'annual' else []
+        )
+
         context.update({
             'year': year,
             'month': month,
@@ -144,12 +153,54 @@ class PlanDashboardView(BusinessRequiredMixin, TemplateView):
             'revenue_summary': revenue_summary,
             'expenses_summary': expenses_summary,
             'net_summary': net_summary,
+            'selected_view': selected_view,
+            'annual_summary': annual_summary,
+            'annual_charts': build_annual_charts(annual_summary) if annual_summary else [],
+            'weekly_summary': _weekly_summary(merged_rows, revenue_actuals) if selected_view == 'weekly' else [],
             'weekday_form': WeekdayValuesForm(),
             'daily_form': DailyValueForm(),
             'revenue_indicator': FinancialPlan.INDICATOR_REVENUE,
             'expenses_indicator': FinancialPlan.INDICATOR_PAID_EXPENSES,
         })
         return context
+
+
+def _weekly_summary(rows, revenue_actuals):
+    """Semanas de segunda a domingo, limitadas ao mês exibido."""
+    weeks = []
+    current = []
+    today = timezone.localdate()
+
+    def append_week(entries):
+        revenue = _summarize([entry['revenue'] for entry in entries])
+        expenses = _summarize([entry['expenses'] for entry in entries])
+        available = sum(
+            entry['date'] <= today and entry['date'] in revenue_actuals
+            for entry in entries
+        )
+        if available == 0:
+            status = 'Pendente'
+        elif available < len(entries) or entries[-1]['date'] > today:
+            status = 'Parcial'
+        else:
+            status = 'Concluída'
+        weeks.append({
+            'start': entries[0]['date'],
+            'end': entries[-1]['date'],
+            'status': status,
+            'revenue': revenue,
+            'expenses': expenses,
+            'net': _net_summary(revenue, expenses),
+        })
+
+    for row in rows:
+        if current and row['date'].weekday() == 0:
+            append_week(current)
+            current = []
+        current.append(row)
+    if current:
+        append_week(current)
+    return weeks
 
 
 def _summarize(comparison):
@@ -200,6 +251,15 @@ def _net_summary(revenue_summary, expenses_summary):
     }
 
 
+def _planning_redirect(request, year, month):
+    selected_view = request.POST.get('view', 'daily')
+    if selected_view not in ('daily', 'weekly', 'annual'):
+        selected_view = 'daily'
+    return redirect(
+        f"{reverse('planning:plan_dashboard')}?year={year}&month={month}&view={selected_view}"
+    )
+
+
 class ApplyWeekdayValuesView(BusinessRequiredMixin, View):
     def post(self, request):
         year = int(request.POST.get('year'))
@@ -215,7 +275,7 @@ class ApplyWeekdayValuesView(BusinessRequiredMixin, View):
         else:
             messages.error(request, 'Dados inválidos para aplicar o planejamento.')
 
-        return redirect(f"{reverse('planning:plan_dashboard')}?year={year}&month={month}")
+        return _planning_redirect(request, year, month)
 
 
 class CopyPreviousMonthView(BusinessRequiredMixin, View):
@@ -227,7 +287,7 @@ class CopyPreviousMonthView(BusinessRequiredMixin, View):
         copy_previous_month(self.business, indicator, year, month)
         messages.success(request, 'Planejamento do mês anterior copiado com sucesso.')
 
-        return redirect(f"{reverse('planning:plan_dashboard')}?year={year}&month={month}")
+        return _planning_redirect(request, year, month)
 
 
 class SetDailyValueView(BusinessRequiredMixin, View):
@@ -251,4 +311,4 @@ class SetDailyValueView(BusinessRequiredMixin, View):
         else:
             messages.error(request, 'Dados inválidos para atualizar o dia.')
 
-        return redirect(f"{reverse('planning:plan_dashboard')}?year={year}&month={month}")
+        return _planning_redirect(request, year, month)

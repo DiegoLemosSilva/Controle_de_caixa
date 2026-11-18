@@ -1,0 +1,59 @@
+{% load l10n %}
+<section class="annual-summary mb-4" aria-labelledby="annual-summary-title">
+    <div class="annual-summary__heading">
+        <div>
+            <p class="annual-summary__eyebrow">Planejamento financeiro</p>
+            <h2 id="annual-summary-title">Visão anual <span>{{ year }}</span></h2>
+            <p class="annual-summary__description">Compare os indicadores mês a mês.</p>
+        </div>
+        <p class="annual-summary__note">Faturamento considera caixas fechados; gastos são apresentados pela data prevista da conta.</p>
+    </div>
+
+    {{ annual_charts|json_script:"annual-charts-data" }}
+    <div class="annual-charts">
+        {% for chart in annual_charts %}
+        <article class="annual-chart">
+            <h3 class="annual-chart__title">{{ chart.title }}</h3>
+            <div class="annual-chart__legend" aria-hidden="true">
+                <span><i class="annual-chart__swatch annual-chart__swatch--first"></i>{{ chart.label_a }}</span>
+                <span><i class="annual-chart__swatch annual-chart__swatch--second"></i>{{ chart.label_b }}</span>
+            </div>
+            {% if not chart.has_nonzero_values %}<p class="annual-chart__scale">Nenhum valor diferente de zero registrado.</p>{% endif %}
+            <div class="annual-chart__scroll" role="region" aria-label="Gráfico: {{ chart.title }}" tabindex="0">
+                <div class="annual-chart__echarts{% if not forloop.first %} annual-chart__echarts--horizontal{% endif %}" data-annual-chart="{{ forloop.counter0 }}" data-orientation="{% if forloop.first %}vertical{% else %}horizontal{% endif %}"{% if forloop.counter == 2 or forloop.counter == 3 %} data-bar-value-labels="true"{% endif %} aria-hidden="true" hidden></div>
+                <svg class="annual-chart__graphic" viewBox="0 0 660 205" aria-hidden="true" focusable="false">
+                    <line x1="48" x2="652" y1="{{ chart.baseline }}" y2="{{ chart.baseline }}" class="annual-chart__zero"></line>
+                    {% for row in chart.rows %}
+                        {% for bar in row.bars %}
+                        {% if not bar.pending %}
+                        <rect x="{{ bar.x|unlocalize }}" y="{{ bar.y }}" width="11" height="{{ bar.height }}" class="{{ bar.class_name }}"></rect>
+                        {% endif %}
+                        {% endfor %}
+                        <text x="{{ row.x|unlocalize }}" y="199" text-anchor="middle" class="annual-chart__month">{{ row.short_name }}</text>
+                    {% endfor %}
+                </svg>
+            </div>
+            <div class="annual-chart__accessible-table">
+                <table>
+                    <caption>Valores em reais — {{ chart.title }} ({{ year }})</caption>
+                    <thead>
+                        <tr><th scope="col">Indicador</th>{% for row in chart.rows %}<th scope="col">{{ row.short_name }}</th>{% endfor %}</tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th scope="row">{{ chart.label_a }}</th>
+                            {% for row in chart.rows %}{% with bar=row.bars.0 %}<td>{% if bar.pending %}Pendente{% else %}R$ {{ bar.value|floatformat:2 }}{% endif %}</td>{% endwith %}{% endfor %}
+                        </tr>
+                        <tr>
+                            <th scope="row">{{ chart.label_b }}</th>
+                            {% for row in chart.rows %}{% with bar=row.bars.1 %}<td>{% if bar.pending %}Pendente{% else %}R$ {{ bar.value|floatformat:2 }}{% endif %}</td>{% endwith %}{% endfor %}
+                        </tr>
+                        <tr><th scope="row">Caixa</th>{% for row in chart.rows %}<td>{{ row.status }}</td>{% endfor %}</tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+        {% endfor %}
+    </div>
+    <p class="annual-summary__footnote">Faturamento e receita parciais consideram somente o faturamento disponível de caixas fechados. Gastos mostram pagamentos registrados, inclusive em datas previstas futuras; podem ser atualizados posteriormente. Receita é faturamento menos gastos, não lucro contábil.</p>
+</section>
