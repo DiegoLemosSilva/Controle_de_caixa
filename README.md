@@ -208,27 +208,72 @@ Os testes cobrem, entre outros pontos exigidos pelo `AGENTS.md`:
   os indicadores Faturamento (dinheiro conferido no fechamento menos
   o valor de abertura, somado ao conferido nas demais formas de
   pagamento) e Gastos (despesas pagas).
-- Tratamento de falhas da API do Gemini sem interromper o sistema.
+- Geração do prompt de análise de IA sem chamada a serviços externos, e
+  tratamento de falhas da chamada automática à API do Gemini (mantida no
+  código para uso futuro) sem interromper o sistema.
 
-## Configuração da API Gemini (opcional)
+## Contas a pagar recorrentes (Fixa, Semanal e Parcelada)
 
-A integração com IA é opcional. Para habilitá-la:
+Na tela de Contas a pagar, ao criar uma nova conta é possível escolher
+entre **Única** (comportamento padrão, igual a antes) ou um dos três
+tipos de recorrência:
 
-1. Obtenha uma chave de API do Google Gemini.
-2. No arquivo `.env`, defina:
-   ```
-   GEMINI_ENABLED=True
-   GEMINI_API_KEY=sua-chave-aqui
-   GEMINI_MODEL=gemini-2.5-flash
-   GEMINI_TIMEOUT_SECONDS=15
-   ```
-3. A chave nunca é exposta ao navegador: todas as chamadas são feitas pelo
-   backend Django, que envia apenas dados financeiros agregados (nunca
-   dados pessoais de clientes) e trata timeouts e falhas de forma segura.
+- **Fixa mensal**: repete todo mês em um dia fixo (ex.: aluguel, todo
+  dia 10). As próximas ocorrências são geradas automaticamente sempre
+  que a tela de Contas a pagar é acessada (geração "sob demanda", sem
+  jobs em segundo plano), mantendo uma janela de 2 meses à frente.
+- **Semanal**: repete todo(a) um dia da semana (ex.: fornecedor de pão
+  às quartas), com a mesma lógica de geração sob demanda, mantendo uma
+  janela de 8 semanas à frente.
+- **Parcelada**: finita por natureza — todas as parcelas são geradas de
+  uma vez no momento da criação, com o valor total dividido em partes
+  iguais (ajuste de centavos na última parcela, nunca usando `float`).
 
-Se a API estiver indisponível ou desativada, as telas de "Assistente IA" e
-"Análise automática" exibem uma mensagem informativa, sem afetar o restante
-do sistema.
+Cada ocorrência gerada é uma conta a pagar comum e independente (com
+seu próprio saldo, pagamentos e histórico); a série é apenas o "molde"
+usado para gerar e, opcionalmente, editar várias ocorrências de uma vez.
+
+### Editar apenas 1 ocorrência vs. editar toda a série
+
+- **Editar uma ocorrência** (tela normal de edição de conta): se o
+  valor ou a data forem alterados de forma diferente do padrão da
+  série, essa ocorrência é marcada como **"Alterada manualmente"** e
+  nunca mais será sobrescrita por uma edição em massa da série.
+- **Editar a série** (tela "Ver série completa", acessível pelo ícone
+  de recorrência ao lado da descrição na listagem): aplica a mudança de
+  descrição/fornecedor/valor a todas as ocorrências **futuras**, ainda
+  **pendentes** e que **não** tenham sido alteradas manualmente.
+  Ocorrências já pagas, canceladas ou já personalizadas nunca são
+  tocadas — o histórico financeiro é sempre preservado.
+- Séries parceladas não podem ter o valor/descrição editados em massa
+  (mudaria o total já combinado); é possível apenas cancelar as
+  parcelas restantes não pagas.
+- "Cancelar ocorrências futuras" cancela apenas o que ainda não foi
+  pago e pausa a geração de novas ocorrências daquela série.
+
+## Assistente IA (geração de prompt para cópia manual)
+
+O Assistente IA (menu "Assistente IA") não envia nenhum dado automaticamente
+a serviços externos. Para cada análise pré-programada, o backend Django
+calcula os indicadores financeiros relevantes e monta um texto (prompt)
+já pronto para ser copiado e colado pelo usuário em qualquer IA de sua
+preferência (ChatGPT, Gemini, Copilot etc.), usando o botão "Copiar texto"
+da tela de resultado.
+
+Essa abordagem foi adotada porque algumas hospedagens (ex.: planos
+gratuitos do PythonAnywhere) restringem chamadas de saída a uma lista
+fixa de domínios, o que impediria o backend de chamar diretamente a API
+de um provedor de IA. Como o backend nunca envia o prompt para nenhum
+serviço externo, nenhuma chave de API é necessária para essa
+funcionalidade, e nenhum dado financeiro deixa o navegador do usuário
+sem que ele decida colar o texto em outro serviço por conta própria.
+
+O código de chamada automática à API do Google Gemini (`apps/ai_assistant/services.py`,
+funções `ask`/`run_analysis`/`_call_gemini`) permanece no projeto para uso
+futuro em ambientes sem essa restrição de rede (ex.: Render), mas não é
+utilizado pelas views padrão atualmente. Caso seja reativado, siga as
+variáveis `GEMINI_ENABLED`, `GEMINI_API_KEY`, `GEMINI_MODEL` e
+`GEMINI_TIMEOUT_SECONDS` do `.env.example`.
 
 ## Backup e restauração do PostgreSQL
 

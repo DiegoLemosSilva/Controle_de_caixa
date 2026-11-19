@@ -17,27 +17,42 @@
 <p class="text-muted small mb-4">{{ template.description }}</p>
 
 {% if result %}
+<div class="alert alert-info">
+    Copie o texto abaixo e cole em uma IA de sua preferência
+    (ChatGPT, Gemini, Copilot etc.) para receber a análise completa.
+    Nenhum dado é enviado automaticamente a nenhum serviço externo.
+</div>
+
 <div class="card">
     <div class="card-body">
-        <div class="analysis-content">{{ result|linebreaksbr }}</div>
+        <textarea id="ai-prompt-text" class="form-control analysis-prompt" rows="16" readonly>{{ result }}</textarea>
     </div>
 </div>
 
+<div class="d-flex flex-wrap gap-2 mt-3">
+    <button type="button" id="ai-copy-btn" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-1"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        Copiar texto
+    </button>
+
+    <form method="post" action="{% url 'ai_assistant:run_analysis' template.analysis_type %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-primary btn-sm">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-1"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 12 11 12"/></svg>
+            Gerar novamente
+        </button>
+    </form>
+</div>
+
 <div class="alert alert-secondary mt-3">
-    Esta análise é gerada automaticamente pela IA a partir dos dados financeiros do sistema
+    Este texto é gerado automaticamente a partir dos dados financeiros do sistema
     e não substitui aconselhamento financeiro profissional.
 </div>
 
-<form method="post" action="{% url 'ai_assistant:run_analysis' template.analysis_type %}" class="mt-2">
-    {% csrf_token %}
-    <button type="submit" class="btn btn-outline-primary btn-sm">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-1"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 12 11 12"/></svg>
-        Gerar novamente
-    </button>
-</form>
+<script src="{% static 'js/ai_assistant/copy-prompt.js' %}"></script>
 {% else %}
 <div class="alert alert-warning">
-    Nenhum resultado disponível. Clique em "Gerar análise" a partir da lista.
+    Nenhum resultado disponível. Clique em "Gerar prompt para IA" a partir da lista.
 </div>
 {% endif %}
 {% endblock %}

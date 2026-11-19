@@ -1,11 +1,25 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{% if object %}Editar conta a pagar{% else %}Nova conta a pagar{% endif %} - Controle de Caixa{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payables/payable_form.css' %}">
+{% endblock %}
 
 {% block content %}
 <h1 class="h3 mb-4">{% if object %}Editar conta a pagar{% else %}Nova conta a pagar{% endif %}</h1>
 <div class="row">
-    <div class="col-12 col-md-6">
+    <div class="col-12 col-md-7">
+        {% if object and object.series %}
+        <div class="alert alert-info">
+            Esta conta faz parte de uma série {{ object.series.get_kind_display|lower }}.
+            <a href="{% url 'payables:payable_series_detail' object.series.pk %}">Ver série completa</a>.
+            Alterações aqui afetam apenas esta ocorrência.
+        </div>
+        {% endif %}
+
+        {% if object %}
         <form method="post" novalidate>
             {% csrf_token %}
             <div class="mb-3">
@@ -16,12 +30,6 @@
                 <label class="form-label">Fornecedor (opcional)</label>
                 {{ form.supplier_name }}
             </div>
-            {% if form.original_amount %}
-            <div class="mb-3">
-                <label class="form-label">Valor original</label>
-                {{ form.original_amount }}
-            </div>
-            {% endif %}
             <div class="mb-3">
                 <label class="form-label">Data prevista para pagamento</label>
                 {{ form.due_date }}
@@ -29,6 +37,77 @@
             <button type="submit" class="btn btn-primary">Salvar</button>
             <a href="{% url 'payables:payable_list' %}" class="btn btn-link">Cancelar</a>
         </form>
+        {% else %}
+        <form method="post" novalidate id="payable-create-form">
+            {% csrf_token %}
+            {{ form.mode }}
+
+            <div class="mb-3">
+                <label class="form-label d-block">Tipo de conta</label>
+                <div class="payable-mode-selector" role="group" aria-label="Tipo de conta">
+                    <button type="button" class="payable-mode-btn" data-mode-option="single">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="10" x2="17" y2="10"/></svg>
+                        Única
+                    </button>
+                    <button type="button" class="payable-mode-btn" data-mode-option="fixed">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg>
+                        Fixa mensal
+                    </button>
+                    <button type="button" class="payable-mode-btn" data-mode-option="weekly">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 12 11 12"/></svg>
+                        Semanal
+                    </button>
+                    <button type="button" class="payable-mode-btn" data-mode-option="installment">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="10" rx="2"/><line x1="7" y1="7" x2="7" y2="17"/><line x1="12" y1="7" x2="12" y2="17"/><line x1="17" y1="7" x2="17" y2="17"/></svg>
+                        Parcelada
+                    </button>
+                </div>
+                <p class="form-text">
+                    Fixa/Semanal: o sistema gera automaticamente as próximas ocorrências.
+                    Parcelada: todas as parcelas são criadas de uma vez.
+                </p>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Descrição</label>
+                {{ form.description }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Fornecedor (opcional)</label>
+                {{ form.supplier_name }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label" id="amount-label">Valor</label>
+                {{ form.amount }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label" id="due-date-label">Data prevista para pagamento</label>
+                {{ form.due_date }}
+            </div>
+
+            <div id="fields-fixed" hidden class="mb-3 payable-mode-fields">
+                <label class="form-label">Repetir todo dia do mês</label>
+                {{ form.day_of_month }}
+                {% if form.day_of_month.errors %}<div class="text-danger small">{{ form.day_of_month.errors|join:" " }}</div>{% endif %}
+            </div>
+
+            <div id="fields-weekly" hidden class="mb-3 payable-mode-fields">
+                <label class="form-label">Repetir toda(o)</label>
+                {{ form.weekday }}
+                {% if form.weekday.errors %}<div class="text-danger small">{{ form.weekday.errors|join:" " }}</div>{% endif %}
+            </div>
+
+            <div id="fields-installment" hidden class="mb-3 payable-mode-fields">
+                <label class="form-label">Número de parcelas</label>
+                {{ form.total_installments }}
+                {% if form.total_installments.errors %}<div class="text-danger small">{{ form.total_installments.errors|join:" " }}</div>{% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary">Salvar</button>
+            <a href="{% url 'payables:payable_list' %}" class="btn btn-link">Cancelar</a>
+        </form>
+        <script src="{% static 'js/payables/payable_form.js' %}"></script>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

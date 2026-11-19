@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ series.description }} - Série de contas a pagar - Controle de Caixa{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{% static 'css/payables/payable_series_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-2 mb-1">
+    <a href="{% url 'payables:payable_list' %}" class="btn btn-sm btn-outline-secondary">&larr; Voltar</a>
+    <h1 class="h3 mb-0">{{ series.description }}</h1>
+</div>
+<p class="text-muted small mb-4">
+    Série {{ series.get_kind_display|lower }}
+    {% if series.supplier_name %} &middot; {{ series.supplier_name }}{% endif %}
+    &middot; R$ {{ series.amount|floatformat:2 }} por ocorrência
+    {% if not series.is_active %} &middot; <span class="badge bg-secondary">Geração pausada</span>{% endif %}
+</p>
+
+<div class="row g-4">
+    <div class="col-12 col-lg-5">
+        {% if series.kind != 'installment' %}
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h6 fw-bold mb-3">Editar série (ocorrências futuras)</h2>
+                <p class="text-muted small">
+                    Altera apenas ocorrências futuras pendentes que não foram
+                    personalizadas manualmente. Ocorrências já pagas ou já
+                    editadas individualmente não são afetadas.
+                </p>
+                <form method="post" action="{% url 'payables:payable_series_update' series.pk %}">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">Descrição</label>
+                        {{ update_form.description }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fornecedor (opcional)</label>
+                        {{ update_form.supplier_name }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Valor de cada ocorrência</label>
+                        {{ update_form.amount }}
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Salvar na série</button>
+                </form>
+            </div>
+        </div>
+
+        <form method="post" action="{% url 'payables:payable_series_cancel' series.pk %}"
+              data-confirm="Cancelar todas as ocorrências futuras não pagas desta série?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                Cancelar ocorrências futuras e pausar série
+            </button>
+        </form>
+        {% else %}
+        <div class="alert alert-secondary">
+            Séries parceladas não permitem editar valor/descrição em massa
+            depois de criadas, pois isso mudaria o total combinado.
+            Use o cancelamento abaixo para interromper as parcelas restantes
+            não pagas, se necessário.
+        </div>
+        <form method="post" action="{% url 'payables:payable_series_cancel' series.pk %}"
+              data-confirm="Cancelar todas as parcelas futuras não pagas desta série?">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                Cancelar parcelas restantes não pagas
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="col-12 col-lg-7">
+        <h2 class="h6 fw-bold mb-3">Ocorrências</h2>
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th class="text-end">Valor</th>
+                        <th>Situação</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for occurrence in occurrences %}
+                    <tr>
+                        <td>
+                            {{ occurrence.due_date|date:"d/m/Y" }}
+                            {% if occurrence.installment_number %}
+                            <span class="text-muted small">({{ occurrence.installment_number }}/{{ series.total_installments }})</span>
+                            {% endif %}
+                            {% if occurrence.detached_from_series %}
+                            <span class="badge bg-warning text-dark ms-1">Alterada manualmente</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">R$ {{ occurrence.original_amount|floatformat:2 }}</td>
+                        <td>
+                            {% if occurrence.status == 'paid' %}
+                                <span class="badge bg-success">Paga</span>
+                            {% elif occurrence.status == 'cancelled' %}
+                                <span class="badge bg-secondary">Cancelada</span>
+                            {% elif occurrence.status == 'partially_paid' %}
+                                <span class="badge bg-info text-dark">Parcial</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark">Pendente</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{% url 'payables:payable_detail' occurrence.pk %}" class="btn btn-sm btn-outline-secondary">Ver</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Nenhuma ocorrência gerada ainda.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="{% static 'js/payables/payable_series_detail.js' %}"></script>
+{% endblock %}

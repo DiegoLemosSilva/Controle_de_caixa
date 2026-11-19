@@ -1,3 +1,9 @@
 .analysis-content {
     white-space: pre-line;
 }
+
+.analysis-prompt {
+    font-family: var(--bs-font-monospace, monospace);
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+}

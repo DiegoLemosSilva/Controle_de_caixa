@@ -95,7 +95,16 @@
         <tbody>
             {% for payable in payables %}
             <tr class="{% if payable.is_overdue %}payable-row--overdue{% endif %}">
-                <td data-label="Descrição">{{ payable.description }}</td>
+                <td data-label="Descrição">
+                    {{ payable.description }}
+                    {% if payable.series %}
+                    <a href="{% url 'payables:payable_series_detail' payable.series.pk %}"
+                       class="payable-series-badge"
+                       title="Parte de uma série {{ payable.series.get_kind_display|lower }}{% if payable.installment_number %} — Parcela {{ payable.installment_number }}/{{ payable.series.total_installments }}{% endif %}">
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.64-6.36"/><polyline points="3 4 3 12 11 12"/></svg>
+                    </a>
+                    {% endif %}
+                </td>
                 <td data-label="Fornecedor">{{ payable.supplier_name|default:"-" }}</td>
                 <td data-label="Data prevista para pagamento">
                     {{ payable.due_date|date:"d/m/Y" }}

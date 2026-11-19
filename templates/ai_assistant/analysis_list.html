@@ -10,15 +10,10 @@
 {% block content %}
 <h1 class="h3 mb-2">Assistente financeira (IA)</h1>
 <p class="text-muted mb-4">
-    Escolha uma análise abaixo. A IA vai usar os dados do seu sistema para gerar uma análise personalizada.
+    Escolha uma análise abaixo. O sistema monta um texto com os dados do seu
+    negócio, que você pode copiar e colar em uma IA de sua preferência
+    (ChatGPT, Gemini, Copilot etc.) para obter a análise completa.
 </p>
-
-{% if not ai_enabled %}
-<div class="alert alert-warning">
-    <strong>Atenção:</strong> a integração com IA está desativada nesta instalação.
-    Configure <code>GEMINI_ENABLED=True</code> e <code>GEMINI_API_KEY</code> no arquivo <code>.env</code> para utilizá-la.
-</div>
-{% endif %}
 
 <div class="row g-3">
     {% for tpl in templates %}
@@ -27,19 +22,13 @@
             <div class="card-body d-flex flex-column">
                 <h2 class="h6 fw-bold mb-1">{{ tpl.name }}</h2>
                 <p class="text-muted small flex-grow-1 mb-3">{{ tpl.description }}</p>
-                {% if ai_enabled %}
                 <form method="post" action="{% url 'ai_assistant:run_analysis' tpl.analysis_type %}">
                     {% csrf_token %}
                     <button type="submit" class="btn btn-primary btn-sm w-100">
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="me-1"><circle cx="12" cy="12" r="10"/><path d="m10 8 6 4-6 4V8z"/></svg>
-                        Gerar análise
+                        Gerar prompt para IA
                     </button>
                 </form>
-                {% else %}
-                <button type="button" class="btn btn-secondary btn-sm w-100" disabled>
-                    IA desativada
-                </button>
-                {% endif %}
             </div>
         </div>
     </div>

@@ -242,7 +242,13 @@ def _build_context_weekday_suggestion(business):
                 exp_by_weekday[weekday] += exp
                 count_by_weekday[weekday] += 1
 
+    period_start = date(months[-1][0], months[-1][1], 1)
+    period_end = date(months[0][0], months[0][1], months[0][2])
+
     lines = [
+        f'Período considerado (últimos 3 meses completos): '
+        f'{period_start:%d/%m/%Y} a {period_end:%d/%m/%Y}.',
+        '',
         'Histórico médio por dia da semana (últimos 3 meses completos):',
         '',
         f'{"Dia":<12} | {"Faturamento médio":>20} | {"Gastos médios":>15}',
@@ -253,6 +259,16 @@ def _build_context_weekday_suggestion(business):
         avg_rev = rev_by_weekday[i] / count
         avg_exp = exp_by_weekday[i] / count
         lines.append(f'{name:<12} | R$ {avg_rev:>17.2f} | R$ {avg_exp:>12.2f}')
+
+    if sum(count_by_weekday.values()) == 0:
+        lines += [
+            '',
+            'Aviso: não há recebimentos ou despesas pagas registrados em '
+            'nenhum dia do período considerado (ex.: vendas canceladas não '
+            'contam, e o mês atual, ainda em andamento, não é incluído). '
+            'A tabela acima está zerada porque não há dados suficientes '
+            'para esta análise — não a trate como meta real.',
+        ]
 
     return '\n'.join(lines)
 
@@ -268,7 +284,60 @@ CONTEXT_BUILDERS = {
 }
 
 
-# --- Envio à IA e registro -------------------------------------------
+# --- Geração de prompt para cópia manual ------------------------------
+#
+# Abordagem atual (ver AGENTS.md seção 14): em vez do backend chamar a
+# API do Gemini automaticamente, o sistema monta o prompt completo
+# (instrução + dados financeiros já calculados) e o exibe para o
+# usuário copiar e colar na IA de sua preferência (ChatGPT, Gemini,
+# Copilot etc.). Isso evita depender de uma chamada de saída do
+# servidor, que pode ser bloqueada em hospedagens com acesso à
+# internet restrito (ex.: planos gratuitos que limitam domínios de
+# saída).
+#
+# O envio automático via API (funções `ask`/`run_analysis`/
+# `_call_gemini` abaixo) é mantido no código, porém não é mais usado
+# pelas views padrão — fica disponível para uso futuro em ambientes
+# sem essa restrição de rede, sem precisar reescrever a integração.
+
+def build_prompt(template, dados):
+    """Monta o texto final do prompt a partir do template e dos dados."""
+    if '{dados}' in template.prompt_template:
+        return template.prompt_template.replace('{dados}', dados)
+    return template.prompt_template + '\n\n' + dados
+
+
+def generate_prompt(business, user, template):
+    """
+    Monta o prompt de uma análise pré-programada para cópia manual.
+
+    Não chama nenhuma API externa. Apenas calcula o contexto financeiro
+    (via CONTEXT_BUILDERS), monta o texto final do prompt e registra a
+    geração para auditoria (sem resposta, pois a IA não é mais chamada
+    pelo backend).
+    """
+    context_fn = CONTEXT_BUILDERS.get(template.analysis_type)
+    if context_fn is None:
+        return 'Tipo de análise não reconhecido.'
+
+    dados = context_fn(business)
+    prompt = build_prompt(template, dados)
+
+    AIInteraction.objects.create(
+        business=business,
+        user=user,
+        interaction_type=AIInteraction.TYPE_ANALYSIS,
+        analysis_type=template.analysis_type,
+        prompt=prompt,
+        response='',
+        success=True,
+    )
+
+    return prompt
+
+
+# --- Envio à IA e registro (mantido para uso futuro, não usado pelas
+# views padrão atualmente — ver comentário acima) ----------------------
 
 def _call_gemini(prompt):
     """

@@ -1,4 +1,4 @@
-"""Modelos de contas a pagar e seus pagamentos."""
+"""Modelos de contas a pagar, seus pagamentos e séries recorrentes."""
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -8,6 +8,95 @@ from django.utils import timezone
 from apps.businesses.models import Business
 from apps.core.constants import MONEY_DECIMAL_PLACES, MONEY_MAX_DIGITS
 from apps.core.models import TimestampedModel
+
+
+WEEKDAY_CHOICES = [
+    (0, 'Segunda-feira'),
+    (1, 'Terça-feira'),
+    (2, 'Quarta-feira'),
+    (3, 'Quinta-feira'),
+    (4, 'Sexta-feira'),
+    (5, 'Sábado'),
+    (6, 'Domingo'),
+]
+
+
+class PayableSeries(TimestampedModel):
+    """
+    "Molde" de uma conta a pagar recorrente (fixa, semanal ou parcelada).
+
+    A série nunca representa, por si só, um lançamento financeiro: cada
+    ocorrência é um Payable normal e independente, com seu próprio
+    saldo, pagamentos e histórico. A série apenas controla a geração de
+    novas ocorrências e permite editar várias de uma vez.
+    """
+
+    KIND_FIXED = 'fixed'
+    KIND_WEEKLY = 'weekly'
+    KIND_INSTALLMENT = 'installment'
+    KIND_CHOICES = [
+        (KIND_FIXED, 'Fixa mensal'),
+        (KIND_WEEKLY, 'Semanal'),
+        (KIND_INSTALLMENT, 'Parcelada'),
+    ]
+
+    business = models.ForeignKey(
+        Business,
+        verbose_name='Empresa',
+        on_delete=models.CASCADE,
+        related_name='payable_series',
+    )
+    kind = models.CharField('Tipo', max_length=20, choices=KIND_CHOICES)
+    description = models.CharField('Descrição', max_length=255)
+    supplier_name = models.CharField('Fornecedor', max_length=150, blank=True)
+    amount = models.DecimalField(
+        'Valor de cada ocorrência',
+        max_digits=MONEY_MAX_DIGITS,
+        decimal_places=MONEY_DECIMAL_PLACES,
+    )
+    # Usado apenas por séries fixas: dia do mês em que a conta vence
+    # (ex.: 10 para "todo dia 10"). Dias além do último dia do mês
+    # (ex.: 31 em fevereiro) recuam para o último dia disponível.
+    day_of_month = models.PositiveSmallIntegerField(
+        'Dia do mês', null=True, blank=True
+    )
+    # Usado apenas por séries semanais.
+    weekday = models.PositiveSmallIntegerField(
+        'Dia da semana', choices=WEEKDAY_CHOICES, null=True, blank=True
+    )
+    # Usado apenas por séries parceladas: quantidade total de parcelas,
+    # todas geradas de uma vez na criação da série.
+    total_installments = models.PositiveSmallIntegerField(
+        'Total de parcelas', null=True, blank=True
+    )
+    # Para fixa/semanal: permite pausar a geração de novas ocorrências
+    # sem afetar as já criadas. Sempre True para parceladas (não há
+    # geração contínua a pausar).
+    is_active = models.BooleanField('Gerando novas ocorrências', default=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name='Criada por',
+        on_delete=models.PROTECT,
+        related_name='payable_series_created',
+    )
+
+    class Meta:
+        verbose_name = 'Série de contas a pagar'
+        verbose_name_plural = 'Séries de contas a pagar'
+        ordering = ['description']
+
+    def __str__(self):
+        return f'{self.description} ({self.get_kind_display()})'
+
+    def clean(self):
+        if self.amount is not None and self.amount <= 0:
+            raise ValidationError('O valor de cada ocorrência deve ser maior que zero.')
+        if self.kind == self.KIND_FIXED and not self.day_of_month:
+            raise ValidationError('Informe o dia do mês para uma série fixa.')
+        if self.kind == self.KIND_WEEKLY and self.weekday is None:
+            raise ValidationError('Informe o dia da semana para uma série semanal.')
+        if self.kind == self.KIND_INSTALLMENT and not self.total_installments:
+            raise ValidationError('Informe o número de parcelas para uma série parcelada.')
 
 
 class Payable(TimestampedModel):
@@ -52,6 +141,27 @@ class Payable(TimestampedModel):
         on_delete=models.PROTECT,
         related_name='payables_created',
     )
+    # Campos opcionais de recorrência. Uma conta sem `series` é uma
+    # conta "única", com comportamento idêntico ao de antes dessa
+    # funcionalidade existir.
+    series = models.ForeignKey(
+        'PayableSeries',
+        verbose_name='Série',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='payables',
+    )
+    installment_number = models.PositiveSmallIntegerField(
+        'Número da parcela', null=True, blank=True
+    )
+    # Marca que esta ocorrência foi editada manualmente de forma
+    # divergente do "molde" da série (valor ou data diferentes).
+    # Edições em massa da série nunca sobrescrevem ocorrências com
+    # esta marca, preservando a escolha explícita do usuário.
+    detached_from_series = models.BooleanField(
+        'Alterada manualmente', default=False
+    )
 
     class Meta:
         verbose_name = 'Conta a pagar'
@@ -60,6 +170,7 @@ class Payable(TimestampedModel):
         indexes = [
             models.Index(fields=['business', 'status']),
             models.Index(fields=['business', 'due_date']),
+            models.Index(fields=['series']),
         ]
 
     def __str__(self):
