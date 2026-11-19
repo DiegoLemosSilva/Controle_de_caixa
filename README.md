@@ -226,8 +226,10 @@ tipos de recorrência:
   às quartas), com a mesma lógica de geração sob demanda, mantendo uma
   janela de 8 semanas à frente.
 - **Parcelada**: finita por natureza — todas as parcelas são geradas de
-  uma vez no momento da criação, com o valor total dividido em partes
-  iguais (ajuste de centavos na última parcela, nunca usando `float`).
+  uma vez no momento da criação, cada uma com o **mesmo valor informado**
+  pelo usuário (ex.: R$ 100,00 em 6x gera 6 parcelas de R$ 100,00 cada,
+  totalizando R$ 600,00) — o campo "Valor" representa o valor de cada
+  parcela, não o total a ser dividido.
 
 Cada ocorrência gerada é uma conta a pagar comum e independente (com
 seu próprio saldo, pagamentos e histórico); a série é apenas o "molde"

@@ -78,30 +78,20 @@ def create_series(business, user, kind, description, supplier_name, amount,
     return series
 
 
-def _split_installment_amounts(total_amount, total_installments):
-    """
-    Divide o valor total em N parcelas com Decimal, ajustando a última
-    parcela para que a soma seja exatamente igual ao total (nunca usar
-    float em valores monetários, conforme AGENTS.md seção 6).
-    """
-    base = (total_amount / total_installments).quantize(
-        Decimal('0.01'), rounding=ROUND_HALF_UP
-    )
-    amounts = [base] * total_installments
-    difference = total_amount - (base * total_installments)
-    amounts[-1] += difference
-    return amounts
-
-
 def _generate_installments(series, user, start_date):
-    amounts = _split_installment_amounts(series.amount, series.total_installments)
-    for index, installment_amount in enumerate(amounts, start=1):
+    """
+    Gera as N parcelas da série com o MESMO valor informado pelo
+    usuário em cada ocorrência (ex.: R$ 100,00 em 6x gera 6 parcelas
+    de R$ 100,00 cada, totalizando R$ 600,00) — o campo "Valor" da
+    série representa o valor de cada parcela, não o total dividido.
+    """
+    for index in range(1, series.total_installments + 1):
         due_date = _add_months(start_date, index - 1)
         Payable.objects.create(
             business=series.business,
             description=f'{series.description} ({index}/{series.total_installments})',
             supplier_name=series.supplier_name,
-            original_amount=installment_amount,
+            original_amount=series.amount,
             due_date=due_date,
             created_by=user,
             series=series,

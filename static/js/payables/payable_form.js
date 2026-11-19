@@ -19,12 +19,20 @@
         installment: document.getElementById('fields-installment'),
     };
     var dueDateLabel = document.getElementById('due-date-label');
+    var amountLabel = document.getElementById('amount-label');
 
-    var LABELS = {
+    var DUE_DATE_LABELS = {
         single: 'Data prevista para pagamento',
         fixed: 'Data da primeira ocorrência',
         weekly: 'Data da primeira ocorrência',
         installment: 'Data da primeira parcela',
+    };
+
+    var AMOUNT_LABELS = {
+        single: 'Valor',
+        fixed: 'Valor de cada ocorrência',
+        weekly: 'Valor de cada ocorrência',
+        installment: 'Valor de cada parcela',
     };
 
     function setActiveButton(mode) {
@@ -45,8 +53,11 @@
             }
         });
 
-        if (dueDateLabel && LABELS[mode]) {
-            dueDateLabel.textContent = LABELS[mode];
+        if (dueDateLabel && DUE_DATE_LABELS[mode]) {
+            dueDateLabel.textContent = DUE_DATE_LABELS[mode];
+        }
+        if (amountLabel && AMOUNT_LABELS[mode]) {
+            amountLabel.textContent = AMOUNT_LABELS[mode];
         }
     }
 

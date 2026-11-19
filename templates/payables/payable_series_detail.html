@@ -59,9 +59,9 @@
         {% else %}
         <div class="alert alert-secondary">
             Séries parceladas não permitem editar valor/descrição em massa
-            depois de criadas, pois isso mudaria o total combinado.
-            Use o cancelamento abaixo para interromper as parcelas restantes
-            não pagas, se necessário.
+            depois de criadas, pois isso alteraria todas as parcelas
+            combinadas. Use o cancelamento abaixo para interromper as
+            parcelas restantes não pagas, se necessário.
         </div>
         <form method="post" action="{% url 'payables:payable_series_cancel' series.pk %}"
               data-confirm="Cancelar todas as parcelas futuras não pagas desta série?">

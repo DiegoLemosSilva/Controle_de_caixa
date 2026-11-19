@@ -53,7 +53,12 @@ class InstallmentSeriesTests(TestCase):
             [o.installment_number for o in occurrences], [1, 2, 3, 4, 5, 6]
         )
 
-    def test_installment_amounts_sum_exactly_to_total(self):
+    def test_installment_amount_repeats_in_every_installment(self):
+        """
+        O valor informado pelo usuário se repete em cada parcela (não
+        é dividido pelo número de parcelas) — ex.: R$ 100,00 em 3x gera
+        3 parcelas de R$ 100,00 cada, totalizando R$ 300,00.
+        """
         series = create_series(
             business=self.business,
             user=self.user,
@@ -64,10 +69,13 @@ class InstallmentSeriesTests(TestCase):
             start_date=timezone.localdate(),
             total_installments=3,
         )
-        total = sum(
-            p.original_amount for p in Payable.objects.filter(series=series)
+        amounts = list(
+            Payable.objects.filter(series=series)
+            .order_by('installment_number')
+            .values_list('original_amount', flat=True)
         )
-        self.assertEqual(total, Decimal('100.00'))
+        self.assertEqual(amounts, [Decimal('100.00')] * 3)
+        self.assertEqual(sum(amounts), Decimal('300.00'))
 
     def test_installment_dates_are_monthly(self):
         start = timezone.localdate().replace(day=15)
